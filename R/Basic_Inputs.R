@@ -1,0 +1,74 @@
+
+R6Input <- R6::R6Class("R6Input",
+                       inherit = ShinyModule,
+                       public = list(
+                         label = NULL,
+                         initialize = function(id, label = NULL){
+                           super$initialize(id)
+                           self$label <- label
+                         },
+                         preview = function(){
+                           div(class = "ShinyForm-Element", self$ui)
+                         }
+                       ),
+                       private = list(
+                         .ui = function() {
+                           stop("Cannot use R6Input")
+                         },
+                         server = function(input, output, session){
+                           value <- reactive(input$user_input)
+                           return(list(value = value))
+                         }
+                       ))
+
+R6TextInput <- R6::R6Class("R6TextInput",
+                              inherit = R6Input,
+                              private = list(
+                                .ui = function(){
+                                  ns <- NS(self$id)
+                                  tagList(
+                                    textInput(ns("user_input"), label = self$label, value = "")
+                                  )
+                                }
+                              ))
+
+R6SelectInput <- R6::R6Class("R6SelectInput",
+                             inherit = R6Input,
+                             public = list(
+                               choices = NULL,
+                               initialize = function(id, label = NULL, choices){
+                                 super$initialize(id, label)
+                                 self$choices <- choices
+                               }),
+                             private = list(
+                               .ui = function(){
+                                 ns <- NS(self$id)
+                                 tagList(selectInput(ns("user_input"),
+                                                     label = self$label,
+                                                     choices = self$choices))
+                               }
+                             )
+                             )
+
+R6NumericInput <- R6::R6Class("R6NumericInput",
+                              inherit = R6Input,
+                              public = list(
+                                min = NA,
+                                max = NA,
+                                initialize = function(id, label = NULL, min = NA, max = NA){
+                                  super$initialize(id, label)
+                                  self$min <- min
+                                  self$max <- max
+                                }
+                              ),
+                              private = list(
+                                .ui = function(){
+                                  ns <- NS(self$id)
+                                  tagList(
+                                    numericInput(ns("user_input"),
+                                                 label = self$label,
+                                                 min = self$min,
+                                                 max = self$max)
+                                  )
+                                }
+                              ))
