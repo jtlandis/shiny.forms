@@ -136,6 +136,17 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
 # ShinyForm <- R6::R6Class("ShinyForm",
 #                          inhert = ShinyModule,)
 
+get_ShinyForm_Element <- function(id, ns = NULL){
+  clicked_id <- "ShinyForm_clicked_id"
+  if(!is.null(ns)){
+    id <- ns(id)
+    clicked_id <- ns(clicked_id)
+  }
+  paste0("$('#",id,"').on('click', function(e){\n",
+         "if(e.target.id.length == 0) { return }\n",
+         "if(e.target.id == '", id, "') { return }\n",
+         "Shiny.setInputValue('",clicked_id, "', e.target.id, {priority: 'event'}) });")
+}
 
 ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 inherit = ShinyModule,
@@ -152,6 +163,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     fluidRow(
                                       class = "ShinyForm-Preview-Container",
                                       id = "Preview-Sortable",
+                                      div(id = "DEBUG", "Debug Item"),
                                       pmap(list(df$width, df$col_ele, df$index), function(x,y,z){
                                         column(
                                           x,
@@ -188,13 +200,14 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                uiOutput(ns("SELECTED"))
                                                ),
                                         textOutput(ns("View"))
-                                      )
+                                      ),
+                                      tags$script(HTML(get_ShinyForm_Element("PREVIEW", ns)))
                                     )
                                   },
                                   server = function(input, output, session){
                                     ns <- session$ns
                                     s <- self$reactive()
-                                    
+                                    num <- reactiveVal(0L)
                                     # Out <- map(self$layout$layout$elements, ~.x$call())
                                     # Out <- reactive({
                                     #   s()
@@ -204,7 +217,20 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     #   map(self$layout$layout$elements, ~.x$call())
                                     # })
                                     
+                                    clicked_element <- reactive({
+                                      id <- input$ShinyForm_clicked_id
+                                      validate(need(nrow(self$layout$layout)>0, "layout needs at least one element"))
+                                      browser()
+                                      lgl <- map_lgl(self$layout$layout$elements, ~paste0(.x$id,"-user_input") %in% id)
+                                      wch <- which(lgl)
+                                      validate(need(is_scalar_numeric(wch), "multiple elements matched..."))
+                                      self$layout$layout$elements[[wch]]
+                                    })
                                     
+                                    observe({
+                                      self$selected_ui <- clicked_element()
+                                      self$invalidate()
+                                    })
                                     
                                     observeEvent(input$addcolumn, {
                                       showModal(
@@ -247,6 +273,14 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         ))
                                     })
                                     
+                                    # observe({
+                                    #   input$InsertTextInput
+                                    #   isolate({
+                                    #     num <- num + 1L
+                                    #     num
+                                    #   })
+                                    # })
+                                    
                                     observeEvent(input$InsertTextInput, {
                                       removeModal()
                                       i <- sprintf("%04d", input$InsertTextInput)
@@ -267,8 +301,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     
                                     output$SELECTED <- renderUI({
                                       ui <- s()$selected_ui
-                                      validate(need(ui, "No UI provided"))
-                                      ui
+                                      validate(need(!is.null(ui), "No UI provided"))
+                                      ui$ui
                                     })
                                     
                                     # output$View <- renderText({
