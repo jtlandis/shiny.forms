@@ -137,33 +137,63 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
 #                          inhert = ShinyModule,)
 
 get_ShinyForm_Element <- function(id, ns = NULL){
-  clicked_id <- "ShinyForm_clicked_id"
+  selected_ele <- "ShinyForm_element_id"
+  selected_col <- "ShinyForm_column_id"
   if(!is.null(ns)){
     id <- ns(id)
-    clicked_id <- ns(clicked_id)
+    selected_ele <- ns(selected_ele)
+    selected_col <- ns(selected_col)
   }
-  paste0(
-    "var ShinyForm_selected_col = null; \n",
-    "function ShinyColumn(el){\n",
-    "  while(el && el.parentNode) {\n",
-    "    el = el.parentNode;\n",
-    "    if (el.classList.contains('ShinyForm-Column')) {\n",
-    "      return el;\n",
-    "    }\n",
-    "  }\n",
-    "  return null; }\n",
-    "var ShinyForm_selected_ele = null;\n",
-    "$('#",id,"').on('click', function(e){\n",
-    "  if(e.target.id == '", id, "') { return }\n",
-    "  if(e.target.id.length == 0) { return }\n",
-    "  if(e.target.id == ShinyForm_selected_ele) {\n",
-    "    //e.target.classList.remove('ShinyForm_selected_ele');\n",
-    "    ShinyForm_selected_ele = null;\n",
-    "    Shiny.setInputValue('",clicked_id,"', 'NULL', {priority: 'event'});\n } else {\n",
-    "    ShinyForm_selected_ele = e.target.id;\n",
-    "    //e.target.classList.add('ShinyForm_selected_ele');\n",
-    "    Shiny.setInputValue('",clicked_id, "', e.target.id, {priority: 'event'});\n }\n console.log(ShinyForm_selected_ele);});")
-}
+  glue::glue(
+    .open = "<", .close = ">", .sep = "\n",
+    "
+    var ShinyForm_selected_col = null;
+    function ShinyColumn(el){
+      if (el.classList.contains('ShinyForm-Column')) { 
+        return el;
+      }
+      while(el && el.parentNode) {
+        el = el.parentNode;
+        if(el.classList.contains('ShinyForm-Column')) {
+          return el;
+        }
+      }
+      return null;
+    }
+    var ShinyForm_selected_ele = null;
+    $('#<id>').on('click', function(e){ // clicked in the container we care about
+      
+      let shinyCol = ShinyColumn(e.target); // store the closest ShinyForm-Column node
+      if (ShinyForm_selected_col == null) {
+          ShinyForm_selected_col = shinyCol;
+          ShinyForm_selected_col.classList.add('ShinyForm-Column-selected');
+          Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'});
+      } else if (shinyCol.id != ShinyForm_selected_col.id) { // if not the same or is null
+          ShinyForm_selected_col.classList.remove('ShinyForm-Column-selected'); //remove select class from current
+          ShinyForm_selected_col = shinyCol;
+          Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'}); // we may not need priority event
+      }
+      if(e.target.id.length == 0) { return } // if no id -- return
+      if(e.target.id == '<id>') { return } // if target is same as container -- return
+      if (e.target.id != ShinyForm_selected_col.id) { //if what we clicked is not the same as the container
+          if(ShinyForm_selected_ele == null) {
+            ShinyForm_selected_ele = e.target;
+            ShinyForm_selected_ele.classList.add('ShinyForm-Element-selected');
+            Shiny.setInputValue('<selected_ele>', ShinyForm_selected_ele.id, {priority: 'event'});
+          } else {
+            ShinyForm_selected_ele.remove('ShinyForm-Element-selected');
+            if(ShinyForm_selected_ele.id == e.target.id) {
+              ShinyForm_selected_ele = null;
+              Shiny.setInputValue('<selected_ele>', 'NULL', {priority: 'event'}); // tell shiny we deselected
+            } else {
+              ShinyForm_selected_ele = e.target;
+              Shiny.setInputValue('<selected_ele>', ShinyForm_selected_ele.id, {priority: 'event'});
+            }
+          }
+      }
+    })
+    ")}
+
 sort_by <- function(x, by){
   order(match(x, by))
 }
@@ -269,8 +299,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     num <- reactiveVal(0L)
                                     
                                     clicked_element <- reactive({
-                                      req(input$ShinyForm_clicked_id)
-                                      id <- input$ShinyForm_clicked_id
+                                      req(input$ShinyForm_element_id)
+                                      id <- input$ShinyForm_element_id
                                       if(id=="NULL") return(NULL)
                                       validate(need(nrow(self$layout$layout)>0, "layout needs at least one element"))
                                       lgl <- map_lgl(self$layout$layout$elements, ~paste0(.x$id,"-user_input") %in% id)
@@ -429,13 +459,18 @@ shinyApp(ui = fluidPage(
                       background-color: #7682FF;
                       opacity: .5;
                     }
-                    .ShinyForm_selected_ele {
+                    .ShinyForm-Element-selected {
                       border: 2px dotted grey;
                     }
                     .ShinyForm-Column {
                       border: .5px solid grey;
                       padding: 25px;
                       border-radius: 15px;
+                    }
+                    .ShinyForm-Column-selected, 
+                    .ShinyForm-Column.ShinyForm-Column-selected {
+                      border: 5px solid red;
+                      opacity: .5;
                     }
                     .ShinyForm-Column:hover {
                       background-color: #FF7676;
