@@ -171,6 +171,7 @@ get_ShinyForm_Element <- function(id, ns = NULL){
       } else if (shinyCol.id != ShinyForm_selected_col.id) { // if not the same or is null
           ShinyForm_selected_col.classList.remove('ShinyForm-Column-selected'); //remove select class from current
           ShinyForm_selected_col = shinyCol;
+          ShinyForm_selected_col.classList.add('ShinyForm-Column-selected')
           Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'}); // we may not need priority event
       }
       if(e.target.id.length == 0) { return } // if no id -- return
@@ -264,7 +265,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     )
                                     
                                   },
-                                  selected_ui = NULL
+                                  selected_ui = NULL,
+                                  selected_col = NULL
                                 ),
                                 private = list(
                                   .ui =  function(){
@@ -284,7 +286,11 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                fluidRow(
                                                  class = "ShinyForm-Preview-Container",
                                                  self$ShinyFormColumn(self$layout$column$width, self$layout$column$index), #initial column
-                                                 id = ns("Preview-Sortable"))),
+                                                 id = ns("Preview-Sortable")),
+                                               sortable_js(ns("Preview-Sortable"),
+                                                           options = sortable_options(
+                                                             onSort = sortable_js_capture_input(ns("Preview_Sortable_Order"))
+                                                           ))),
                                         column(3,
                                                uiOutput(ns("SELECTED"))
                                                )
@@ -297,6 +303,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     ns <- session$ns
                                     s <- self$reactive()
                                     num <- reactiveVal(0L)
+                                    num2 <- reactiveVal(1L)
                                     
                                     clicked_element <- reactive({
                                       req(input$ShinyForm_element_id)
@@ -327,23 +334,35 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     })
                                     
                                     observeEvent(input$addcolumn, {
+                                      validate(need(input$ShinyForm_column_id, "Select a column First"))
                                       showModal(
                                         modalDialog(
                                           numericInput(ns("NewColSize"), "Column Width", value = 6L, min = 1L, max = 12L),
-                                          selectInput(ns("NewColWhich"), "Which", choices = self$layout$column$index),
-                                          selectInput(ns("NewColWhere"), "Where", choices = c("After","Before"), selected = "After"),
+                                          #selectInput(ns("NewColWhich"), "Which", choices = self$layout$column$index),
+                                          #selectInput(ns("NewColWhere"), "Where", choices = c("After","Before"), selected = "After"),
                                           footer = tagList(
                                             modalButton("Cancel"),
                                             actionButton(ns("InsertColumn"), "OK")
                                         )
                                       ))
                                     })
+                                    numVal2 <- reactive({
+                                      validate(need(input$InsertColumn, "Need to add a text element"))
+                                      isolate({
+                                        newVal <- num2() + 1L
+                                        num2(newVal)
+                                        num2()
+                                      })
+                                    })
                                     
                                     observeEvent(input$InsertColumn, {
                                       removeModal()
-                                      self$layout$push_column(size = input$NewColSize,
-                                                              index = as.numeric(input$NewColWhich),
-                                                              where = input$NewColWhere)
+                                      # self$layout$push_column(size = input$NewColSize,
+                                      #                         index = as.numeric(input$NewColWhich),
+                                      #                         where = input$NewColWhere)
+                                      insertUI(paste0("#",input$ShinyForm_column_id),
+                                               where = "afterEnd",
+                                               ui = self$ShinyFormColumn(input$NewColSize, numVal2()))
                                       print(self$layout$column)
                                       self$invalidate()
                                     })
@@ -353,6 +372,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     })
                                     
                                     observeEvent(input$TextInput, {
+                                      
                                       lay <- self$layout
                                       showModal(
                                         modalDialog(
