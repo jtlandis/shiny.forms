@@ -142,10 +142,18 @@ get_ShinyForm_Element <- function(id, ns = NULL){
     id <- ns(id)
     clicked_id <- ns(clicked_id)
   }
-  paste0("$('#",id,"').on('click', function(e){\n",
-         "if(e.target.id.length == 0) { return }\n",
-         "if(e.target.id == '", id, "') { return }\n",
-         "Shiny.setInputValue('",clicked_id, "', e.target.id, {priority: 'event'}) });")
+  paste0(
+    "var ShinyForm_selected = null;\n",
+    "$('#",id,"').on('click', function(e){\n",
+    "  if(e.target.id.length == 0) { return }\n",
+    "  if(e.target.id == '", id, "') { return }\n",
+    "  if(e.target.id == ShinyForm_selected) {\n",
+    "    //e.target.classList.remove('ShinyForm_selected');\n",
+    "    ShinyForm_selected = null;\n",
+    "    Shiny.setInputValue('",clicked_id,"', 'NULL', {priority: 'event'});\n } else {\n",
+    "    ShinyForm_selected = e.target.id;\n",
+    "    //e.target.classList.add('ShinyForm_selected');\n",
+    "    Shiny.setInputValue('",clicked_id, "', e.target.id, {priority: 'event'});\n }\n console.log(ShinyForm_selected);});")
 }
 
 ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
@@ -157,10 +165,21 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     self$layout <- ShinyLayout$new()
                                   },
                                   preview_layout = function(){
+                                    #browser()
                                     ns <- NS(self$id)
-                                    if(is.null(self$layout$layout)||nrow(self$layout$layout)==0) return()
+                                    df_cols <- self$layout$column
                                     df <- self$layout$layout
-                                    df <- nest(group_by(df, index, width), col_ele = c(elements, element_index))
+                                    if(is.null(df)){
+                                      df_map <- df_cols
+                                      df_map$col_ele <- list(NA)
+                                    } else {
+                                      df <- nest(group_by(df, index, width), col_ele = c(elements, element_index))
+                                      df_map <- left_join(df_cols, df, by = c("index","width"))
+                                    }
+                                    df <- df_map
+                                    # if(is.null(self$layout$layout)||nrow(self$layout$layout)==0) return()
+                                    # df <- self$layout$layout
+                                    # df <- nest(group_by(df, index, width), col_ele = c(elements, element_index))
                                     tagList(
                                       fluidRow(
                                         class = "ShinyForm-Preview-Container",
@@ -172,9 +191,9 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                             class = "ShinyForm-Column",
                                             fluidRow(
                                               id = paste0("Sortable-index-", z),
-                                              map(y$elements, ~.x$preview()),
-                                              sortable_js(paste0("Sortable-index-", z))
-                                            )
+                                              map(y$elements, ~.x$preview())
+                                            ),
+                                            sortable_js(paste0("Sortable-index-", z))
                                           )
                                         }),
                                       ),
@@ -225,17 +244,30 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     # })
                                     
                                     clicked_element <- reactive({
+                                      req(input$ShinyForm_clicked_id)
                                       id <- input$ShinyForm_clicked_id
+                                      if(id=="NULL") return(NULL)
                                       validate(need(nrow(self$layout$layout)>0, "layout needs at least one element"))
-                                      browser()
                                       lgl <- map_lgl(self$layout$layout$elements, ~paste0(.x$id,"-user_input") %in% id)
                                       wch <- which(lgl)
-                                      validate(need(is_scalar_numeric(wch), "multiple elements matched..."))
+                                      validate(need(is_scalar_integer(wch), "multiple elements matched..."))
                                       self$layout$layout$elements[[wch]]
                                     })
                                     
                                     observe({
-                                      self$selected_ui <- clicked_element()
+                                      selected <- clicked_element()
+                                      if(!is.null(self$selected_ui)){
+                                        self$selected_ui$selected <- FALSE #turn off selected
+                                        if(is.null(selected) || self$selected_ui$id == selected$id) {
+                                          self$selected_ui <- NULL
+                                        } else {
+                                          self$selected_ui <- selected
+                                          self$selected_ui$selected <- TRUE
+                                        }
+                                      } else {
+                                        self$selected_ui <- selected
+                                        self$selected_ui$selected <- TRUE
+                                      }
                                       self$invalidate()
                                     })
                                     
@@ -305,7 +337,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     })
                                     
                                     output$PREVIEW <- renderUI({
-                                      validate(need(nrow(s()$layout$layout)>0, "Need to Add Elements"))
+                                      validate(need(nrow(s()$layout$layout)>0||nrow(s()$layout$column)>0, "Need to Add Elements"))
                                       s()$preview_layout()
                                     })
                                     
@@ -337,13 +369,21 @@ test <- ShinyFormBuilder$new("test_id")
 shinyApp(ui = fluidPage(
   tags$head(
     tags$style(HTML("
+                    .ShinyForm-Preview-Container {
+                      padding: 15px;
+                    }
                     .ShinyForm-Element:hover {
                       background-color: #7682FF;
                       opacity: .5;
                     }
-                    # .ShinyForm-Column {
-                    #   min-height: 20px;
-                    # }
+                    .ShinyForm_selected {
+                      border: 2px dotted grey;
+                    }
+                    .ShinyForm-Column {
+                      border: .5px solid grey;
+                      padding: 25px;
+                      border-radius: 15px;
+                    }
                     .ShinyForm-Column:hover {
                       background-color: #FF7676;
                       opacity: .5;

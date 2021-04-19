@@ -3,12 +3,15 @@ R6Input <- R6::R6Class("R6Input",
                        inherit = ShinyModule,
                        public = list(
                          label = NULL,
+                         selected = FALSE,
                          initialize = function(id, label = NULL){
                            super$initialize(id)
                            self$label <- label
                          },
                          preview = function(){
-                           div(class = "ShinyForm-Element", 
+                           div(class = ifelse(self$selected,
+                                              "ShinyForm-Element ShinyForm_selected",
+                                              "ShinyForm-Element"), 
                                `data-rank-id` = self$id,
                                self$ui)
                          }
