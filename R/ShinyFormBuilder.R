@@ -194,7 +194,10 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                               id = paste0("Sortable-index-", z),
                                               map(y$elements, ~.x$preview())
                                             ),
-                                            sortable_js(paste0("Sortable-index-", z))
+                                            sortable_js(paste0("Sortable-index-", z),
+                                                        options = sortable_options(
+                                                          onSort = sortable_js_capture_input(ns(paste0("Preview_Sortable_Order-", z)))
+                                                        ))
                                           )
                                         }),
                                       ),
@@ -348,16 +351,33 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       ui$ui
                                     })
                                     
+                                    # reactive({
+                                    #   req(input$Preview_Sortable_Order)
+                                    #   inval
+                                    #   input$Preview_Sortable_Order
+                                    # })
+                                    
                                     observe({
-                                      validate(need(input$Preview_Sortable_Order, "Nothing to View"))
-                                      #browser()
-                                      #lay <- self$layout$layout
-                                      cols <- self$layout$column
-                                      #x_lay <- paste0(lay$index,"-",lay$width)
-                                      x_col <- paste0(cols$index,"-",cols$width)
-                                      #self$layout$layout <- lay[sort_by(x_lay, input$Preview_Sortable_Order),]
-                                      self$layout$column <- cols[sort_by(x_col, input$Preview_Sortable_Order),]
-                                    })
+                                      clicked_element()
+                                      col_Order <- input$Preview_Sortable_Order
+                                      lay <- self$layout$layout
+                                      lay_isOrdered <- map_lgl(unique(lay$index), ~!is.null(input[[paste0("Preview_Sortable_Order-",.x)]]))
+                                      if(any(lay_isOrdered)){
+                                        lay <- lay  %>%
+                                          group_by(index) %>%
+                                          mutate(
+                                            ele_ord = sort_by(x = map_chr(elements, ~.x$id),
+                                                              by = input[[paste0("Preview_Sortable_Order-",cur_group())]])
+                                          ) %>%
+                                          arrange(index, ele_ord) %>% select(-ele_ord) %>% ungroup()
+                                        self$layout$layout <- lay
+                                      }
+                                      if(!is.null(col_Order)){
+                                        cols <- self$layout$column
+                                        x_col <- paste0(cols$index,"-",cols$width)
+                                        self$layout$column <- cols[sort_by(x_col, col_Order),]
+                                      }
+                                    }, priority = 2)
                                     
                                     output$View <- renderPrint({
                                       validate(need(input$Preview_Sortable_Order, "Nothing to View"))
