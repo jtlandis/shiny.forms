@@ -143,17 +143,27 @@ get_ShinyForm_Element <- function(id, ns = NULL){
     clicked_id <- ns(clicked_id)
   }
   paste0(
-    "var ShinyForm_selected = null;\n",
+    "var ShinyForm_selected_col = null; \n",
+    "function ShinyColumn(el){\n",
+    "  while(el && el.parentNode) {\n",
+    "    el = el.parentNode;\n",
+    "    if (el.classList.contains('ShinyForm-Column')) {\n",
+    "      return el;\n",
+    "    }\n",
+    "  }\n",
+    "  return null; }\n",
+    "var ShinyForm_selected_ele = null;\n",
     "$('#",id,"').on('click', function(e){\n",
-    "  if(e.target.id.length == 0) { return }\n",
     "  if(e.target.id == '", id, "') { return }\n",
-    "  if(e.target.id == ShinyForm_selected) {\n",
-    "    //e.target.classList.remove('ShinyForm_selected');\n",
-    "    ShinyForm_selected = null;\n",
+    "  if(e.target.id.length == 0) { return }\n",
+    "  if(e.target.id == ShinyForm_selected_ele) {\n",
+    "    //e.target.classList.remove('ShinyForm_selected_ele');\n",
+    ""
+    "    ShinyForm_selected_ele = null;\n",
     "    Shiny.setInputValue('",clicked_id,"', 'NULL', {priority: 'event'});\n } else {\n",
-    "    ShinyForm_selected = e.target.id;\n",
-    "    //e.target.classList.add('ShinyForm_selected');\n",
-    "    Shiny.setInputValue('",clicked_id, "', e.target.id, {priority: 'event'});\n }\n console.log(ShinyForm_selected);});")
+    "    ShinyForm_selected_ele = e.target.id;\n",
+    "    //e.target.classList.add('ShinyForm_selected_ele');\n",
+    "    Shiny.setInputValue('",clicked_id, "', e.target.id, {priority: 'event'});\n }\n console.log(ShinyForm_selected_ele);});")
 }
 sort_by <- function(x, by){
   order(match(x, by))
@@ -188,6 +198,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         pmap(list(df$width, df$col_ele, df$index), function(x,y,z){
                                           column(
                                             x,
+                                            id = paste0("ShinyForm-Column-", z),
                                             `data-rank-id` = paste0(z,'-',x),
                                             class = "ShinyForm-Column",
                                             fluidRow(
@@ -408,7 +419,7 @@ shinyApp(ui = fluidPage(
                       background-color: #7682FF;
                       opacity: .5;
                     }
-                    .ShinyForm_selected {
+                    .ShinyForm_selected_ele {
                       border: 2px dotted grey;
                     }
                     .ShinyForm-Column {
