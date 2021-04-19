@@ -155,7 +155,9 @@ get_ShinyForm_Element <- function(id, ns = NULL){
     "    //e.target.classList.add('ShinyForm_selected');\n",
     "    Shiny.setInputValue('",clicked_id, "', e.target.id, {priority: 'event'});\n }\n console.log(ShinyForm_selected);});")
 }
-
+sort_by <- function(x, by){
+  order(match(x, by))
+}
 ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 inherit = ShinyModule,
                                 public = list(
@@ -165,7 +167,6 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     self$layout <- ShinyLayout$new()
                                   },
                                   preview_layout = function(){
-                                    #browser()
                                     ns <- NS(self$id)
                                     df_cols <- self$layout$column
                                     df <- self$layout$layout
@@ -347,6 +348,17 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       ui$ui
                                     })
                                     
+                                    observe({
+                                      validate(need(input$Preview_Sortable_Order, "Nothing to View"))
+                                      #browser()
+                                      #lay <- self$layout$layout
+                                      cols <- self$layout$column
+                                      #x_lay <- paste0(lay$index,"-",lay$width)
+                                      x_col <- paste0(cols$index,"-",cols$width)
+                                      #self$layout$layout <- lay[sort_by(x_lay, input$Preview_Sortable_Order),]
+                                      self$layout$column <- cols[sort_by(x_col, input$Preview_Sortable_Order),]
+                                    })
+                                    
                                     output$View <- renderPrint({
                                       validate(need(input$Preview_Sortable_Order, "Nothing to View"))
                                       input$Preview_Sortable_Order
@@ -402,3 +414,5 @@ random_html_color <- function(){
   str_c(sample(c("0","1","2","3","4","5","6","7","8","9",
                  "A","B","C","D","E","F"), 6, replace = T), collapse = "")
 }
+
+
