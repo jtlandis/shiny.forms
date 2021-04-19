@@ -157,26 +157,33 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     self$layout <- ShinyLayout$new()
                                   },
                                   preview_layout = function(){
+                                    ns <- NS(self$id)
                                     if(is.null(self$layout$layout)||nrow(self$layout$layout)==0) return()
                                     df <- self$layout$layout
                                     df <- nest(group_by(df, index, width), col_ele = c(elements, element_index))
-                                    fluidRow(
-                                      class = "ShinyForm-Preview-Container",
-                                      id = "Preview-Sortable",
-                                      div(id = "DEBUG", "Debug Item"),
-                                      pmap(list(df$width, df$col_ele, df$index), function(x,y,z){
-                                        column(
-                                          x,
-                                          class = "ShinyForm-Column",
-                                          fluidRow(
-                                            id = paste0("Sortable-index-", z),
-                                            map(y$elements, ~.x$preview()),
-                                            sortable_js(paste0("Sortable-index-", z))
+                                    tagList(
+                                      fluidRow(
+                                        class = "ShinyForm-Preview-Container",
+                                        id = "Preview-Sortable",
+                                        pmap(list(df$width, df$col_ele, df$index), function(x,y,z){
+                                          column(
+                                            x,
+                                            `data-rank-id` = paste0(z,'-',x),
+                                            class = "ShinyForm-Column",
+                                            fluidRow(
+                                              id = paste0("Sortable-index-", z),
+                                              map(y$elements, ~.x$preview()),
+                                              sortable_js(paste0("Sortable-index-", z))
+                                            )
                                           )
-                                        )
-                                      }),
-                                      sortable_js("Preview-Sortable")
+                                        }),
+                                      ),
+                                      sortable_js("Preview-Sortable",
+                                                  options = sortable_options(
+                                                    onSort = sortable_js_capture_input(ns("Preview_Sortable_Order"))
+                                                  ))
                                     )
+                                    
                                   },
                                   selected_ui = NULL
                                 ),
@@ -198,9 +205,9 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                uiOutput(ns("PREVIEW"))),
                                         column(3,
                                                uiOutput(ns("SELECTED"))
-                                               ),
-                                        textOutput(ns("View"))
+                                               )
                                       ),
+                                      verbatimTextOutput(ns("View")),
                                       tags$script(HTML(get_ShinyForm_Element("PREVIEW", ns)))
                                     )
                                   },
@@ -273,17 +280,19 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         ))
                                     })
                                     
-                                    # observe({
-                                    #   input$InsertTextInput
-                                    #   isolate({
-                                    #     num <- num + 1L
-                                    #     num
-                                    #   })
-                                    # })
+                                    
+                                    numVal <- reactive({
+                                      validate(need(input$InsertTextInput, "Need to add a text element"))
+                                      isolate({
+                                        newVal <- num() + 1L
+                                        num(newVal)
+                                        num()
+                                        })
+                                      })
                                     
                                     observeEvent(input$InsertTextInput, {
                                       removeModal()
-                                      i <- sprintf("%04d", input$InsertTextInput)
+                                      i <- sprintf("%04d", numVal())
                                       id <- sprintf("FormTextInput%s", i)
                                       self$layout$push_element(ele = R6TextInput$new(id, input$NewTextIn), 
                                                                index = as.numeric(input$NewColWhich))
@@ -296,6 +305,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     })
                                     
                                     output$PREVIEW <- renderUI({
+                                      validate(need(nrow(s()$layout$layout)>0, "Need to Add Elements"))
                                       s()$preview_layout()
                                     })
                                     
@@ -303,6 +313,11 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       ui <- s()$selected_ui
                                       validate(need(!is.null(ui), "No UI provided"))
                                       ui$ui
+                                    })
+                                    
+                                    output$View <- renderPrint({
+                                      validate(need(input$Preview_Sortable_Order, "Nothing to View"))
+                                      input$Preview_Sortable_Order
                                     })
                                     
                                     # output$View <- renderText({

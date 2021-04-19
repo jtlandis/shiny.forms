@@ -8,7 +8,9 @@ R6Input <- R6::R6Class("R6Input",
                            self$label <- label
                          },
                          preview = function(){
-                           div(class = "ShinyForm-Element", self$ui)
+                           div(class = "ShinyForm-Element", 
+                               `data-rank-id` = self$id,
+                               self$ui)
                          }
                        ),
                        private = list(
