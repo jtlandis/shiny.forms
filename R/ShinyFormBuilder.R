@@ -158,7 +158,6 @@ get_ShinyForm_Element <- function(id, ns = NULL){
     "  if(e.target.id.length == 0) { return }\n",
     "  if(e.target.id == ShinyForm_selected_ele) {\n",
     "    //e.target.classList.remove('ShinyForm_selected_ele');\n",
-    ""
     "    ShinyForm_selected_ele = null;\n",
     "    Shiny.setInputValue('",clicked_id,"', 'NULL', {priority: 'event'});\n } else {\n",
     "    ShinyForm_selected_ele = e.target.id;\n",
@@ -175,6 +174,22 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   initialize = function(id){
                                     super$initialize(id)
                                     self$layout <- ShinyLayout$new()
+                                  },
+                                  ShinyFormColumn = function(width, index) {
+                                    ns <- NS(self$id)
+                                    column(
+                                      width,
+                                      id = paste0("ShinyForm-Column-", index),
+                                      `data-rank-id` = paste0("ShinyForm-Column-",index,'-',width),
+                                      class = "ShinyForm-Column",
+                                      fluidRow(
+                                        id = paste0("Sortable-index-", index)
+                                      ),
+                                      sortable_js(paste0("Sortable-index-", index),
+                                                  options = sortable_options(
+                                                    onSort = sortable_js_capture_input(ns(paste0("Preview_Sortable_Order-", index)))
+                                                  ))
+                                    )
                                   },
                                   preview_layout = function(){
                                     ns <- NS(self$id)
@@ -236,27 +251,22 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       br(),
                                       fluidRow(
                                         column(9,
-                                               uiOutput(ns("PREVIEW"))),
+                                               fluidRow(
+                                                 class = "ShinyForm-Preview-Container",
+                                                 self$ShinyFormColumn(self$layout$column$width, self$layout$column$index), #initial column
+                                                 id = ns("Preview-Sortable"))),
                                         column(3,
                                                uiOutput(ns("SELECTED"))
                                                )
                                       ),
                                       verbatimTextOutput(ns("View")),
-                                      tags$script(HTML(get_ShinyForm_Element("PREVIEW", ns)))
+                                      tags$script(HTML(get_ShinyForm_Element("Preview-Sortable", ns)))
                                     )
                                   },
                                   server = function(input, output, session){
                                     ns <- session$ns
                                     s <- self$reactive()
                                     num <- reactiveVal(0L)
-                                    # Out <- map(self$layout$layout$elements, ~.x$call())
-                                    # Out <- reactive({
-                                    #   s()
-                                    #   validate(need(!is.null(self$layout$layout)&&
-                                    #              nrow(self$layout$layout)>0, "No Elements exist"))
-                                    #   browser()
-                                    #   map(self$layout$layout$elements, ~.x$call())
-                                    # })
                                     
                                     clicked_element <- reactive({
                                       req(input$ShinyForm_clicked_id)
@@ -385,7 +395,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       }
                                       if(!is.null(col_Order)){
                                         cols <- self$layout$column
-                                        x_col <- paste0(cols$index,"-",cols$width)
+                                        x_col <- paste0("ShinyForm-Column-",cols$index,"-",cols$width)
                                         self$layout$column <- cols[sort_by(x_col, col_Order),]
                                       }
                                     }, priority = 2)
