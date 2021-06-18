@@ -453,7 +453,7 @@ shinyApp(ui = fluidPage(
                       border: 5px solid red;
                       opacity: .5;
                     }
-                    .ShinyForm-Column:hover {
+                    .ShinyForm-Column-selected:hover {
                       background-color: #FF7676;
                       opacity: .5;
                     }
