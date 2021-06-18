@@ -66,7 +66,7 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                              },
                              column = tibble(index = integer(),
                                               width = integer()),
-                             layout = tibble(index = integer(),
+                             object = tibble(index = integer(),
                                              width = integer(),
                                              elements = list(),
                                              element_index = integer()),
@@ -76,13 +76,13 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                                if(is.null(index)){
                                  index <- max(self$column$index)
                                }
-                               layout <- self$layout[self$layout$index%in%index,]
-                               if(nrow(layout)==0){
+                               object <- self$object[self$object$index%in%index,]
+                               if(nrow(object)==0){
                                  newindx <- 1L
                                } else {
-                                 newindx <- max(layout$element_index) + 1L
+                                 newindx <- max(object$element_index) + 1L
                                }
-                               self$layout <- dplyr::bind_rows(self$layout,
+                               self$object <- dplyr::bind_rows(self$object,
                                                                tibble(index = index,
                                                                       width = unique(self$column[self$column$index%in%index,]$width),
                                                                       elements = list(ele),
@@ -143,19 +143,9 @@ get_ShinyForm_Element <- function(id, ns = NULL){
     $('#<id>').on('click', function(e){ // clicked in the container we care about
       
       let shinyCol = ShinyColumn(e.target); // store the closest ShinyForm-Column node
-      if (ShinyForm_selected_col == null) {
-          ShinyForm_selected_col = shinyCol;
-          ShinyForm_selected_col.classList.add('ShinyForm-Column-selected');
-          Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'});
-      } else if (shinyCol.id != ShinyForm_selected_col.id) { // if not the same or is null
-          ShinyForm_selected_col.classList.remove('ShinyForm-Column-selected'); //remove select class from current
-          ShinyForm_selected_col = shinyCol;
-          ShinyForm_selected_col.classList.add('ShinyForm-Column-selected')
-          Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'}); // we may not need priority event
-      }
       if(e.target.id.length == 0) { return } // if no id -- return
       if(e.target.id == '<id>') { return } // if target is same as container -- return
-      if (e.target.id != ShinyForm_selected_col.id) { //if what we clicked is not the same as the container
+      if (shinyCol.childElementCount != 0 && e.target.id != shinyCol.id) { //if what we clicked is not the same as the container
           if(ShinyForm_selected_ele == null) {
             ShinyForm_selected_ele = e.target;
             ShinyForm_selected_ele.classList.add('ShinyForm-Element-selected');
@@ -167,10 +157,27 @@ get_ShinyForm_Element <- function(id, ns = NULL){
               Shiny.setInputValue('<selected_ele>', 'NULL', {priority: 'event'}); // tell shiny we deselected
             } else {
               ShinyForm_selected_ele = e.target;
+              ShinyForm_selected_ele.classList.add('ShinyForm-Element-selected');
               Shiny.setInputValue('<selected_ele>', ShinyForm_selected_ele.id, {priority: 'event'});
             }
           }
+          return ;
       }
+      if (ShinyForm_selected_col == null) {
+          ShinyForm_selected_col = shinyCol;
+          ShinyForm_selected_col.classList.add('ShinyForm-Column-selected');
+          Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'});
+      } else if (shinyCol.id != ShinyForm_selected_col.id) { // if not the same or is null
+          ShinyForm_selected_col.classList.remove('ShinyForm-Column-selected'); //remove select class from current
+          ShinyForm_selected_col = shinyCol;
+          ShinyForm_selected_col.classList.add('ShinyForm-Column-selected')
+          Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'}); // we may not need priority event
+      } else if (shinyCol.id == ShinyForm_selected_col.id) {
+          ShinyForm_selected_col.classList.remove('ShinyForm-Column-selected'); //remove select class from current
+          ShinyForm_selected_col = null;
+          Shiny.setInputValue('<selected_col>', null, {priority: 'event'});
+      }
+      
     })
     ")}
 
@@ -204,7 +211,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   preview_layout = function(){
                                     ns <- NS(self$id)
                                     df_cols <- self$layout$column
-                                    df <- self$layout$layout
+                                    df <- self$layout$object
                                     if(is.null(df)){
                                       df_map <- df_cols
                                       df_map$col_ele <- list(NA)
@@ -213,8 +220,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       df_map <- left_join(df_cols, df, by = c("index","width"))
                                     }
                                     df <- df_map
-                                    # if(is.null(self$layout$layout)||nrow(self$layout$layout)==0) return()
-                                    # df <- self$layout$layout
+                                    # if(is.null(self$layout$object)||nrow(self$layout$object)==0) return()
+                                    # df <- self$layout$object
                                     # df <- nest(group_by(df, index, width), col_ele = c(elements, element_index))
                                     tagList(
                                       fluidRow(
@@ -289,11 +296,11 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       req(input$ShinyForm_element_id)
                                       id <- input$ShinyForm_element_id
                                       if(id=="NULL") return(NULL)
-                                      validate(need(nrow(self$layout$layout)>0, "layout needs at least one element"))
-                                      lgl <- map_lgl(self$layout$layout$elements, ~paste0(.x$id,"-user_input") %in% id)
+                                      validate(need(nrow(self$layout$object)>0, "layout needs at least one element"))
+                                      lgl <- map_lgl(self$layout$object$elements, ~paste0(.x$id,"-user_input") %in% id)
                                       wch <- which(lgl)
                                       validate(need(is_scalar_integer(wch), "multiple elements matched..."))
-                                      self$layout$layout$elements[[wch]]
+                                      self$layout$object$elements[[wch]]
                                     })
                                     
                                     observe({
@@ -370,7 +377,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       insertUI(paste0("#",input$ShinyForm_column_id),
                                                where = "beforeEnd",
                                                ui = ele$ui)
-                                      print(self$layout$layout)
+                                      print(self$layout$object)
                                       self$invalidate()
                                     })
                                     
@@ -387,7 +394,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     
                                     
                                     output$PREVIEW <- renderUI({
-                                      validate(need(nrow(s()$layout$layout)>0||nrow(s()$layout$column)>0, "Need to Add Elements"))
+                                      validate(need(nrow(s()$layout$object)>0||nrow(s()$layout$column)>0, "Need to Add Elements"))
                                       s()$preview_layout()
                                     })
                                     
@@ -400,7 +407,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     observe({
                                       clicked_element()
                                       col_Order <- input$Preview_Sortable_Order
-                                      lay <- self$layout$layout
+                                      lay <- self$layout$object
                                       lay_isOrdered <- map_lgl(unique(lay$index), ~!is.null(input[[paste0("Preview_Sortable_Order-",.x)]]))
                                       if(any(lay_isOrdered)){
                                         lay <- lay  %>%
@@ -410,7 +417,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                               by = input[[paste0("Preview_Sortable_Order-",cur_group())]])
                                           ) %>%
                                           arrange(index, ele_ord) %>% select(-ele_ord) %>% ungroup()
-                                        self$layout$layout <- lay
+                                        self$layout$object <- lay
                                       }
                                       if(!is.null(col_Order)){
                                         cols <- self$layout$column
@@ -453,10 +460,10 @@ shinyApp(ui = fluidPage(
                       border: 5px solid red;
                       opacity: .5;
                     }
-                    .ShinyForm-Column-selected:hover {
+                    /*.ShinyForm-Column-selected:hover {
                       background-color: #FF7676;
                       opacity: .5;
-                    }
+                    }*/
                     "))
   ),
   test$ui), function(input, output, session){
