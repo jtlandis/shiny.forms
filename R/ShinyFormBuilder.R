@@ -61,7 +61,9 @@ ShinyModule <- R6::R6Class("ShinyModule",
 
 ShinyLayout <- R6::R6Class("ShinyLayout",
                            public = list(
-                             initialize = function(){
+                             id = NULL,
+                             initialize = function(id = NULL){
+                               self$id <- id
                                self$push_column(12, 1L)
                              },
                              column = tibble(index = integer(),
@@ -154,7 +156,7 @@ get_ShinyForm_Element <- function(id, ns = NULL){
             ShinyForm_selected_ele.classList.remove('ShinyForm-Element-selected');
             if(ShinyForm_selected_ele.id == e.target.id) {
               ShinyForm_selected_ele = null;
-              Shiny.setInputValue('<selected_ele>', 'NULL', {priority: 'event'}); // tell shiny we deselected
+              Shiny.setInputValue('<selected_ele>', null, {priority: 'event'}); // tell shiny we deselected
             } else {
               ShinyForm_selected_ele = e.target;
               ShinyForm_selected_ele.classList.add('ShinyForm-Element-selected');
@@ -190,7 +192,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   layout = NULL,
                                   initialize = function(id){
                                     super$initialize(id)
-                                    self$layout <- ShinyLayout$new()
+                                    self$layout <- ShinyLayout$new(id = id)
                                   },
                                   ShinyFormColumn = function(width, index) {
                                     ns <- NS(self$id)
@@ -293,9 +295,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     num2 <- reactiveVal(1L)
                                     
                                     clicked_element <- reactive({
-                                      req(input$ShinyForm_element_id)
                                       id <- input$ShinyForm_element_id
-                                      if(id=="NULL") return(NULL)
+                                      if(is.null(id)) return(NULL)
                                       validate(need(nrow(self$layout$object)>0, "layout needs at least one element"))
                                       lgl <- map_lgl(self$layout$object$elements, ~paste0(.x$id,"-user_input") %in% id)
                                       wch <- which(lgl)
@@ -307,7 +308,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       selected <- clicked_element()
                                       if(!is.null(self$selected_ui)){
                                         self$selected_ui$selected <- FALSE #turn off selected
-                                        if(is.null(selected) || self$selected_ui$id == selected$id) {
+                                        if(is.null(selected) || (inherits(self$selected_ui, "ShinyModule") && self$selected_ui$id == selected$id)) {
                                           self$selected_ui <- NULL
                                         } else {
                                           self$selected_ui <- selected
