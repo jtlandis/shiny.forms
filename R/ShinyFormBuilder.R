@@ -7,7 +7,7 @@ library(dplyr)
 library(tibble)
 library(stringr)
 library(rlang)
-
+library(here)
 ShinyModule <- R6::R6Class("ShinyModule",
                            public = list(
                              id = NULL,
@@ -58,7 +58,7 @@ ShinyModule <- R6::R6Class("ShinyModule",
                              
                              count = 0L
                            ))
-
+source(here("R/Basic_Inputs.R"))
 ShinyLayout <- R6::R6Class("ShinyLayout",
                            public = list(
                              id = NULL,
@@ -475,9 +475,9 @@ shinyApp(ui = fluidPage(
   
 })
 
-random_html_color <- function(){
-  str_c(sample(c("0","1","2","3","4","5","6","7","8","9",
-                 "A","B","C","D","E","F"), 6, replace = T), collapse = "")
-}
+# random_html_color <- function(){
+#   str_c(sample(c("0","1","2","3","4","5","6","7","8","9",
+#                  "A","B","C","D","E","F"), 6, replace = T), collapse = "")
+# }
 
 
