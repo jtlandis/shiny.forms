@@ -116,7 +116,14 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
 
 # ShinyForm <- R6::R6Class("ShinyForm",
 #                          inhert = ShinyModule,)
-
+updateShinyFormColumn <- function(id, width = 6, session){
+  m <- list(
+    id = id,
+    width = width
+  )
+  print(m)
+  session$sendCustomMessage("updateShinyFormColumn", m)
+}
 get_ShinyForm_Element <- function(id, ns = NULL){
   selected <- "ShinyForm_selected_id"
   if(!is.null(ns)){
@@ -126,6 +133,11 @@ get_ShinyForm_Element <- function(id, ns = NULL){
   glue::glue(
     .open = "<", .close = ">", .sep = "\n",
     "
+    Shiny.addCustomMessageHandler('updateShinyFormColumn', updateShinyFormColumn);
+    function updateShinyFormColumn(message) {
+      let col = $('#' + message.id)[0] ;
+      col.className = col.className.replace(/(col-..-)([0-9]+)/, '$1' + message.width);
+    }
     var ShinyForm_selected = null;
     function ShinyColumn(el){
       if (el.classList.contains('ShinyForm-Column')) { 
@@ -188,7 +200,57 @@ sort_by <- function(x, by){
 ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                inherit = ShinyModule,
                                public = list(
-                                 
+                                 initialize = function(id, width){
+                                   super$initialize(id)
+                                   self$width <- width
+                                 },
+                                 width = NULL,
+                                 server2 = function(input, output, session){
+                                   ns <- NS(self$id)
+                                   observe({
+                                     updateShinyFormColumn(id = ns("ShinyForm-Column"), width = input$width, session = session)
+                                   })
+                                 }
+                               ),
+                               active = list(
+                                 edit = function(value){
+                                   if(missing(value)){
+                                     private$.edit()
+                                   } else {
+                                     stop("`$edit` is read only.")
+                                   }
+                                 }
+                               ),
+                               private = list(
+                                 .ui = function(){
+                                   ns <- NS(self$id)
+                                   tagList(
+                                     column(
+                                       self$width,
+                                       id = ns("ShinyForm-Column"),
+                                       `data-rank-id` = paste0(ns("ShinyForm-Column"),'-',self$width),
+                                       class = "ShinyForm-Column"
+                                     ),
+                                     sortable_js(ns("ShinyForm-Column"),
+                                                 options = sortable_options(
+                                                   #onSort = sortable_js_capture_input(ns(paste0("Preview_Sortable_Order-", index))) #may change how we get order later.
+                                                 ))
+                                   )
+                                   
+                                 },
+                                 .edit = function(){
+                                   ns <- NS(self$id)
+                                   tagList(
+                                     numericInput(ns("width"), label = "New Width", 
+                                                  value = self$width, min = 1, max = 12)
+                                   )
+                                 },
+                                 server = function(input, output, session){
+                                   ns <- NS(self$id)
+                                   observe({
+                                     updateShinyFormColumn(id = ns("ShinyForm-Column"), width = input$width, session = session)
+                                   })
+                                 }
                                ))
 
 ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
@@ -407,7 +469,9 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     
                                     
                                     output$PREVIEW <- renderUI({
-                                      validate(need(nrow(s()$layout$object)>0||nrow(s()$layout$column)>0, "Need to Add Elements"))
+                                      validate(
+                                        need(NULL, "disabled"),
+                                        need(nrow(s()$layout$object)>0||nrow(s()$layout$column)>0, "Need to Add Elements"))
                                       s()$preview_layout()
                                     })
                                     
