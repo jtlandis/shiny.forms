@@ -118,17 +118,15 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
 #                          inhert = ShinyModule,)
 
 get_ShinyForm_Element <- function(id, ns = NULL){
-  selected_ele <- "ShinyForm_element_id"
-  selected_col <- "ShinyForm_column_id"
+  selected <- "ShinyForm_selected_id"
   if(!is.null(ns)){
     id <- ns(id)
-    selected_ele <- ns(selected_ele)
-    selected_col <- ns(selected_col)
+    selected <- ns(selected)
   }
   glue::glue(
     .open = "<", .close = ">", .sep = "\n",
     "
-    var ShinyForm_selected_col = null;
+    var ShinyForm_selected = null;
     function ShinyColumn(el){
       if (el.classList.contains('ShinyForm-Column')) { 
         return el;
@@ -141,31 +139,31 @@ get_ShinyForm_Element <- function(id, ns = NULL){
       }
       return null;
     }
-    var ShinyForm_selected_ele = null;
+    
     $('#<id>').on('click', function(e){ // clicked in the container we care about
       
-      let shinyCol = ShinyColumn(e.target); // store the closest ShinyForm-Column node
       if(e.target.id.length == 0) { return } // if no id -- return
       if(e.target.id == '<id>') { return } // if target is same as container -- return
-      if (shinyCol.childElementCount != 0 && e.target.id != shinyCol.id) { //if what we clicked is not the same as the container
-          if(ShinyForm_selected_ele == null) {
-            ShinyForm_selected_ele = e.target;
-            ShinyForm_selected_ele.classList.add('ShinyForm-Element-selected');
-            Shiny.setInputValue('<selected_ele>', ShinyForm_selected_ele.id, {priority: 'event'});
-          } else {
-            ShinyForm_selected_ele.classList.remove('ShinyForm-Element-selected');
-            if(ShinyForm_selected_ele.id == e.target.id) {
-              ShinyForm_selected_ele = null;
-              Shiny.setInputValue('<selected_ele>', null, {priority: 'event'}); // tell shiny we deselected
+      let shinyCol = ShinyColumn(e.target); // store the closest ShinyForm-Column node
+     // if (shinyCol.childElementCount != 0 && e.target.id != shinyCol.id) { //if what we clicked is not the same as the container
+          if(ShinyForm_selected == null) { // if unselected
+            ShinyForm_selected = e.target;
+            ShinyForm_selected.classList.add('ShinyForm-selected');
+            Shiny.setInputValue('<selected>', ShinyForm_selected.id, {priority: 'event'});
+          } else { // if an element/column is already selected
+            ShinyForm_selected.classList.remove('ShinyForm-selected');
+            if(ShinyForm_selected.id == e.target.id) {
+              ShinyForm_selected = null;
+              Shiny.setInputValue('<selected>', null, {priority: 'event'}); // tell shiny we deselected
             } else {
-              ShinyForm_selected_ele = e.target;
-              ShinyForm_selected_ele.classList.add('ShinyForm-Element-selected');
-              Shiny.setInputValue('<selected_ele>', ShinyForm_selected_ele.id, {priority: 'event'});
+              ShinyForm_selected = e.target;
+              ShinyForm_selected.classList.add('ShinyForm-selected');
+              Shiny.setInputValue('<selected>', ShinyForm_selected.id, {priority: 'event'});
             }
           }
           return ;
-      }
-      if (ShinyForm_selected_col == null) {
+     // }
+      /*if (ShinyForm_selected_col == null) {
           ShinyForm_selected_col = shinyCol;
           ShinyForm_selected_col.classList.add('ShinyForm-Column-selected');
           Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'});
@@ -178,7 +176,7 @@ get_ShinyForm_Element <- function(id, ns = NULL){
           ShinyForm_selected_col.classList.remove('ShinyForm-Column-selected'); //remove select class from current
           ShinyForm_selected_col = null;
           Shiny.setInputValue('<selected_col>', null, {priority: 'event'});
-      }
+      }*/
       
     })
     ")}
@@ -186,6 +184,13 @@ get_ShinyForm_Element <- function(id, ns = NULL){
 sort_by <- function(x, by){
   order(match(x, by))
 }
+
+ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
+                               inherit = ShinyModule,
+                               public = list(
+                                 
+                               ))
+
 ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 inherit = ShinyModule,
                                 public = list(
@@ -295,14 +300,21 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     num2 <- reactiveVal(1L)
                                     
                                     clicked_element <- reactive({
-                                      id <- input$ShinyForm_element_id
-                                      if(is.null(id)) return(NULL)
+                                      id <- input$ShinyForm_selected_id
+                                      if(is.null(ShinyForm_column_id())) return(NULL)
                                       validate(need(nrow(self$layout$object)>0, "layout needs at least one element"))
                                       lgl <- map_lgl(self$layout$object$elements, ~paste0(.x$id,"-user_input") %in% id)
                                       wch <- which(lgl)
                                       validate(need(is_scalar_integer(wch), "multiple elements matched..."))
                                       self$layout$object$elements[[wch]]
                                     })
+                                    
+                                    ShinyForm_column_id <- reactive({
+                                      id <- input$ShinyForm_selected_id
+                                      if(is.null(id)||str_detect(id, "ShinyForm-Column", negate = T)) return(NULL)
+                                      id
+                                    })
+                                    
                                     
                                     observe({
                                       selected <- clicked_element()
@@ -322,7 +334,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     })
                                     
                                     observeEvent(input$addcolumn, {
-                                      validate(need(input$ShinyForm_column_id, "Select a column First"))
+                                      validate(need(ShinyForm_column_id(), "Select a column First"))
                                       showModal(
                                         modalDialog(
                                           fluidRow(
@@ -351,8 +363,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       self$layout$push_column(size = input$NewColSize,
                                                               index = numVal2(),
                                                               where = input$NewColWhere,
-                                                              reference = input$ShinyForm_column_id)
-                                      insertUI(paste0("#",input$ShinyForm_column_id),
+                                                              reference = ShinyForm_column_id())
+                                      insertUI(paste0("#",ShinyForm_column_id()),
                                                where = input$NewColWhere,
                                                ui = self$ShinyFormColumn(input$NewColSize, numVal2()))
                                       insertUI(paste0(".ShinyForm-Container"),
@@ -370,12 +382,12 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       i <- sprintf("%04d", numVal())
                                       id <- sprintf("FormTextInput%s", i)
                                       indx <- filter(self$layout$column,
-                                                     reference %in% input$ShinyForm_column_id) %>% pull(index)
+                                                     reference %in% ShinyForm_column_id()) %>% pull(index)
                                       ele <- R6TextInput$new(id)
                                       self$layout$push_element(ele = ele,
                                                                index = indx,
-                                                               reference = input$ShinyForm_column_id)
-                                      insertUI(paste0("#",input$ShinyForm_column_id),
+                                                               reference = ShinyForm_column_id())
+                                      insertUI(paste0("#",ShinyForm_column_id()),
                                                where = "beforeEnd",
                                                ui = ele$ui)
                                       print(self$layout$object)
@@ -400,6 +412,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     })
                                     
                                     output$SELECTED <- renderUI({
+                                      validate(need(input$ShinyForm_selected_id, "Please Select an Element to Edit."))
                                       ui <- s()$selected_ui
                                       validate(need(!is.null(ui), "No UI provided"))
                                       ui$ui
@@ -444,10 +457,10 @@ shinyApp(ui = fluidPage(
                     .ShinyForm-Preview-Container {
                       padding: 15px;
                     }
-                    .ShinyForm-Element:hover {
+                    /*.ShinyForm-Element:hover {
                       background-color: #7682FF;
                       opacity: .5;
-                    }
+                    }*/
                     .ShinyForm-Element-selected {
                       border: 2px dotted grey;
                     }
@@ -456,8 +469,9 @@ shinyApp(ui = fluidPage(
                       padding: 25px;
                       border-radius: 15px;
                     }
-                    .ShinyForm-Column-selected, 
-                    .ShinyForm-Column.ShinyForm-Column-selected {
+                    .ShinyForm-selected, 
+                    .ShinyForm-Element.ShinyForm-selected,
+                    .ShinyForm-Column.ShinyForm-selected {
                       border: 5px solid red;
                       opacity: .5;
                     }
