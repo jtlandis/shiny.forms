@@ -8,18 +8,18 @@ R6Input <- R6::R6Class("R6Input",
                            super$initialize(id)
                            self$label <- label
                          },
+                         ui = function() {
+                           stop("Cannot use R6Input")
+                         },
                          preview = function(){
                            div(class = ifelse(self$selected,
                                               "ShinyForm-Element ShinyForm_selected",
                                               "ShinyForm-Element"), 
                                `data-rank-id` = self$id,
-                               self$ui)
+                               self$ui())
                          }
                        ),
                        private = list(
-                         .ui = function() {
-                           stop("Cannot use R6Input")
-                         },
                          server = function(input, output, session){
                            value <- reactive(input$user_input)
                            return(list(value = value))
@@ -28,9 +28,9 @@ R6Input <- R6::R6Class("R6Input",
 
 R6TextInput <- R6::R6Class("R6TextInput",
                               inherit = R6Input,
-                              private = list(
-                                .ui = function(){
-                                  ns <- NS(self$id)
+                              public = list(
+                                ui = function(id = self$id){
+                                  ns <- NS(id)
                                   tagList(
                                     textInput(ns("user_input"), label = self$label, value = "")
                                   )

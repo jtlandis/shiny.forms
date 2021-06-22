@@ -11,6 +11,10 @@ ShinyModule <- R6::R6Class("ShinyModule",
                                moduleServer(self$id,
                                             private$server)
                              },
+                             ui = function(id = self$id){
+                               ns <- NS(id)
+                               tagList()
+                             },
                              reactive = function() {
                                if(is.null(private$reactiveExpr)) {
                                  private$reactiveDep <- reactiveVal(0L)
@@ -28,26 +32,12 @@ ShinyModule <- R6::R6Class("ShinyModule",
                                invisible()
                              }
                            ),
-                           active = list(
-                             ui = function(value){
-                               if(missing(value)){
-                                 private$.ui()
-                               } else {
-                                 stop("`$ui` is read only.")
-                               }
-                             }
-                           ),
                            private = list(
-                             .ui = function(){
-                               ns <- NS(self$id)
-                               tagList()
-                             },
                              server = function(input, output, session){
                                
                              },
                              reactiveDep = NULL,
                              reactiveExpr = NULL,
-                             
                              count = 0L
                            ))
 ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
@@ -58,25 +48,8 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                    self$width <- width
                                  },
                                  width = NULL,
-                                 server2 = function(input, output, session){
-                                   ns <- NS(self$id)
-                                   observe({
-                                     updateShinyFormColumn(id = ns("ShinyForm-Column"), width = input$width, session = session)
-                                   })
-                                 }
-                               ),
-                               active = list(
-                                 edit = function(value){
-                                   if(missing(value)){
-                                     private$.edit()
-                                   } else {
-                                     stop("`$edit` is read only.")
-                                   }
-                                 }
-                               ),
-                               private = list(
-                                 .ui = function(){
-                                   ns <- NS(self$id)
+                                 ui = function(id = self$id){
+                                   ns <- NS(id)
                                    tagList(
                                      column(
                                        self$width,
@@ -91,15 +64,17 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                    )
                                    
                                  },
-                                 .edit = function(){
-                                   ns <- NS(self$id)
+                                 edit = function(id = self$id){
+                                   ns <- NS(id)
                                    tagList(
                                      numericInput(ns("width"), label = "New Width", 
                                                   value = self$width, min = 1, max = 12)
                                    )
-                                 },
+                                 }
+                               ),
+                               private = list(
                                  server = function(input, output, session){
-                                   ns <- NS(self$id)
+                                   ns <- session$ns
                                    observe({
                                      updateShinyFormColumn(id = ns("ShinyForm-Column"), width = input$width, session = session)
                                    })
@@ -137,7 +112,7 @@ server <- function(input, output, session){
       selector = '#addButton',
       where = "beforeBegin",
       ui = tagList(
-        col$ui, col$edit
+        col$ui(), col$edit()
       )
     )
     col$call()
@@ -147,25 +122,27 @@ server <- function(input, output, session){
 shinyApp(ui, server)
 
 ModTest <- R6::R6Class("ModTest", inherit = ShinyModule,
-                       private = list(
-                         .ui = function(){
-                           ns <- NS(self$id)
+                       public = list(
+                         ui = function(id = self$id){
+                           ns <- NS(id)
                            tagList(
                              br(),
                              actionButton(ns('addButton'), '', icon = icon('plus'))
                            )
-                         },
+                         }
+                       ),
+                       private = list(
                          server = function(input, output, session){
-                           ns <- NS(self$id)
+                           ns <- session$ns
                            observeEvent(input$addButton, {
                              i <- sprintf('%04d', input$addButton)
                              id <- sprintf('test%s', i)
-                             col <- ShinyFormColumn$new(ns(id), 6)
+                             col <- ShinyFormColumn$new(id, 6)
                              insertUI(
                                selector = paste0('#',ns('addButton')),
                                where = "beforeBegin",
                                ui = tagList(
-                                 col$ui, col$edit
+                                 col$ui(ns(col$id)), col$edit(ns(col$id))
                                )
                              )
                              col$call()
@@ -191,7 +168,7 @@ ui <- fluidPage(
       col.className = col.className.replace(/(col-..-)([0-9]+)/, '$1' + message.width);
     }"))
   ),
-  .mod$ui
+  .mod$ui()
 )
 server <- function(input, output, session){
   .mod$call()
