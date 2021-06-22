@@ -64,8 +64,6 @@ remove_shiny_inputs <- function(id, .input) {
     })
   )
 }
-# ShinyForm <- R6::R6Class("ShinyForm",
-#                          inhert = ShinyModule,)
 updateShinyFormColumn <- function(id, width = 6, session){
   m <- list(
     id = id,

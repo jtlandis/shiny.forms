@@ -32,21 +32,21 @@ shinyApp(ui, server = function(input, output, session){
 })
 
 
-script_defer <- function(...){
-  tagAppendAttributes(
-    tags$script(
-      ...
-    ),
-    defer = NA
-  )
-}
-
-function withinShinyForm(target) {
-  parent = document.querySelector(".ShinyForm-Builder-Container");
-  return parent.contains(target);
-}
-
-$(".ShinyForm-Builder-Container").on("click", function(e){
-  if(e.target.id.length == 0) { return } // No ID, return
-  Shiny.setInputValue("ShinyForm_clicked_id", e.target.id, {priority: "event"} )
-})
+# script_defer <- function(...){
+#   tagAppendAttributes(
+#     tags$script(
+#       ...
+#     ),
+#     defer = NA
+#   )
+# }
+# 
+# function withinShinyForm(target) {
+#   parent = document.querySelector(".ShinyForm-Builder-Container");
+#   return parent.contains(target);
+# }
+# 
+# $(".ShinyForm-Builder-Container").on("click", function(e){
+#   if(e.target.id.length == 0) { return } // No ID, return
+#   Shiny.setInputValue("ShinyForm_clicked_id", e.target.id, {priority: "event"} )
+# })
