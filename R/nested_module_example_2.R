@@ -1,5 +1,16 @@
 library(shiny)
-
+"%||%" <- function(a,b) if(is.null(a)) b else a
+remove_shiny_inputs <- function(id, .input) {
+  impl <- .subset2(.input, "impl")
+  lgl <- id %in% impl$.values$keys()
+  if(any(!lgl)) warn(glue("The following `id`s were not found in shiny server input and cannot be removed : ", glue_collapse(glue("`{id[!lgl]}`"), sep = ", ", last = ", and ")))
+  to_rm <- id[lgl]
+  invisible(
+    lapply(to_rm, function(i) {
+      impl$.values$remove(i)
+    })
+  )
+}
 ShinyModule <- R6::R6Class("ShinyModule",
                            public = list(
                              id = NULL,
@@ -50,7 +61,7 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                  width = NULL,
                                  ui = function(id = self$id){
                                    ns <- NS(id)
-                                   tagList(
+                                   div(class = ns("ShinyForm-Column-Container"),
                                      column(
                                        self$width,
                                        id = ns("ShinyForm-Column"),
@@ -68,16 +79,39 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                    ns <- NS(id)
                                    tagList(
                                      numericInput(ns("width"), label = "New Width", 
-                                                  value = self$width, min = 1, max = 12)
+                                                  value = self$width, min = 1, max = 12),
+                                     actionButton(ns('rm'), '', icon = icon('minus'))
                                    )
+                                 },
+                                 remove = function(input = NULL, session = NULL){
+                                   session <- session %||% getDefaultReactiveDomain()
+                                   ns <- session$ns
+                                   removeUI(glue(".shiny-input-container:has(#{ns('width')})"))
+                                   removeUI(glue(".{ns('ShinyForm-Column-Container')}:has(#{ns('ShinyForm-Column')})"))
+                                   removeUI(glue("#{ns('rm')}"))
+                                   if(!is.null(input)){
+                                     remove_shiny_inputs(c(ns('rm'), ns('width')), input)
+                                   }
                                  }
                                ),
                                private = list(
+                                 finalizer = function(){
+                                   session <- getDefaultReactiveDomain()
+                                   if(!is.null(session)){
+                                     ns <- session$ns
+                                     self$remove()
+                                   }
+                                 },
                                  server = function(input, output, session){
                                    ns <- session$ns
                                    observe({
                                      updateShinyFormColumn(id = ns("ShinyForm-Column"), width = input$width, session = session)
                                    })
+                                   
+                                   observeEvent(input$rm, {
+                                     self$remove(input, session)
+                                   })
+                                
                                  }
                                ))
 
@@ -94,13 +128,16 @@ ui <- fluidPage(
     )),
     tags$script(HTML("Shiny.addCustomMessageHandler('updateShinyFormColumn', updateShinyFormColumn);
     function updateShinyFormColumn(message) {
-      console.log(message.id) ;
-      let col = $('#' + message.id)[0] ;
-      col.className = col.className.replace(/(col-..-)([0-9]+)/, '$1' + message.width);
+      let col = $('#' + message.id);
+      if(col.length !=0){
+        col = col[0];
+        col.className = col.className.replace(/(col-..-)([0-9]+)/, '$1' + message.width);
+      }
     }"))
   ),
   br(),
-  actionButton('addButton', '', icon = icon('plus'))
+  actionButton('addButton', '', icon = icon('plus')),
+  actionButton('browse', "Browse Env")
 )
 
 server <- function(input, output, session){
@@ -117,12 +154,19 @@ server <- function(input, output, session){
     )
     col$call()
   })
+  observeEvent(input$browse, {
+    browser()
+  })
 }
 
 shinyApp(ui, server)
 
 ModTest <- R6::R6Class("ModTest", inherit = ShinyModule,
                        public = list(
+                         cols = list(),
+                         push_col = function(id){
+                           self$cols[[private$count]] <- ShinyFormColumn$new(id, 6)
+                         },
                          ui = function(id = self$id){
                            ns <- NS(id)
                            tagList(
@@ -133,19 +177,21 @@ ModTest <- R6::R6Class("ModTest", inherit = ShinyModule,
                        ),
                        private = list(
                          server = function(input, output, session){
+                           s <- self$reactive()
                            ns <- session$ns
                            observeEvent(input$addButton, {
+                             self$invalidate()
                              i <- sprintf('%04d', input$addButton)
                              id <- sprintf('test%s', i)
-                             col <- ShinyFormColumn$new(id, 6)
+                             self$push_col(id)
                              insertUI(
                                selector = paste0('#',ns('addButton')),
                                where = "beforeBegin",
                                ui = tagList(
-                                 col$ui(ns(col$id)), col$edit(ns(col$id))
+                                 self$cols[[private$count]]$ui(ns(self$cols[[private$count]]$id)), self$cols[[private$count]]$edit(ns(self$cols[[private$count]]$id))
                                )
                              )
-                             col$call()
+                             self$cols[[private$count]]$call()
                            })
                          }
                        ))
@@ -168,9 +214,13 @@ ui <- fluidPage(
       col.className = col.className.replace(/(col-..-)([0-9]+)/, '$1' + message.width);
     }"))
   ),
-  .mod$ui()
+  .mod$ui(),
+  actionButton('browse', "Browse Env")
 )
 server <- function(input, output, session){
   .mod$call()
+  observeEvent(input$browse,{
+    browser()
+  })
 }
 shinyApp(ui, server)
