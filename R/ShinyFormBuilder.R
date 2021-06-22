@@ -52,61 +52,6 @@ ShinyModule <- R6::R6Class("ShinyModule",
                              count = 0L
                            ))
 source(here("R/Basic_Inputs.R"))
-ShinyLayout <- R6::R6Class("ShinyLayout",
-                           public = list(
-                             id = NULL,
-                             initialize = function(id = NULL){
-                               self$id <- id
-                               self$push_column(12, 1L)
-                             },
-                             column = tibble(index = integer(),
-                                              width = integer()),
-                             object = tibble(index = integer(),
-                                             width = integer(),
-                                             elements = list(),
-                                             element_index = integer()),
-                             #add_element = function(){},
-                             push_element = function(ele, index, reference) {
-                               
-                               if(is.null(index)){
-                                 index <- max(self$column$index)
-                               }
-                               object <- self$object[self$object$index%in%index,]
-                               if(nrow(object)==0){
-                                 newindx <- 1L
-                               } else {
-                                 newindx <- max(object$element_index) + 1L
-                               }
-                               self$object <- dplyr::bind_rows(self$object,
-                                                               tibble(index = index,
-                                                                      width = unique(self$column[self$column$index%in%index,]$width),
-                                                                      elements = list(ele),
-                                                                      element_index = newindx))
-                               invisible(self)
-                             },
-                             push_column = function(size, index, where = "beforeEnd", reference = NULL) {
-                               ns <- NS(self$id)
-                               if(nrow(self$column)==0&&is.null(reference)){
-                                 self$column <- tibble(index = index,
-                                                       width = size,
-                                                       where = where,
-                                                       reference = ns("ShinyForm-Column-1"))
-                               } else if(is.null(reference)){
-                                 abort('reference must not be NULL')
-                               } else{
-                                 self$column <- dplyr::bind_rows(
-                                   self$column,
-                                   tibble(index = index,
-                                          width = size,
-                                          where = where,
-                                          reference = reference)
-                                   )
-                               }
-                               invisible(self)
-                             }
-                             
-                           ))
-
 # ShinyForm <- R6::R6Class("ShinyForm",
 #                          inhert = ShinyModule,)
 updateShinyFormColumn <- function(id, width = 6, session){
@@ -171,20 +116,6 @@ get_ShinyForm_Element <- function(id, ns = NULL){
           }
           return ;
      // }
-      /*if (ShinyForm_selected_col == null) {
-          ShinyForm_selected_col = shinyCol;
-          ShinyForm_selected_col.classList.add('ShinyForm-Column-selected');
-          Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'});
-      } else if (shinyCol.id != ShinyForm_selected_col.id) { // if not the same or is null
-          ShinyForm_selected_col.classList.remove('ShinyForm-Column-selected'); //remove select class from current
-          ShinyForm_selected_col = shinyCol;
-          ShinyForm_selected_col.classList.add('ShinyForm-Column-selected')
-          Shiny.setInputValue('<selected_col>', ShinyForm_selected_col.id, {priority: 'event'}); // we may not need priority event
-      } else if (shinyCol.id == ShinyForm_selected_col.id) {
-          ShinyForm_selected_col.classList.remove('ShinyForm-Column-selected'); //remove select class from current
-          ShinyForm_selected_col = null;
-          Shiny.setInputValue('<selected_col>', null, {priority: 'event'});
-      }*/
       
     })
     ")}
@@ -257,6 +188,61 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                    
                                  }
                                ))
+
+ShinyLayout <- R6::R6Class("ShinyLayout",
+                           public = list(
+                             id = NULL,
+                             initialize = function(id = NULL){
+                               self$id <- id
+                               self$push_column(12, 1L)
+                             },
+                             column = tibble(index = integer(),
+                                             width = integer()),
+                             object = tibble(index = integer(),
+                                             width = integer(),
+                                             elements = list(),
+                                             element_index = integer()),
+                             #add_element = function(){},
+                             push_element = function(ele, index, reference) {
+                               
+                               if(is.null(index)){
+                                 index <- max(self$column$index)
+                               }
+                               object <- self$object[self$object$index%in%index,]
+                               if(nrow(object)==0){
+                                 newindx <- 1L
+                               } else {
+                                 newindx <- max(object$element_index) + 1L
+                               }
+                               self$object <- dplyr::bind_rows(self$object,
+                                                               tibble(index = index,
+                                                                      width = unique(self$column[self$column$index%in%index,]$width),
+                                                                      elements = list(ele),
+                                                                      element_index = newindx))
+                               invisible(self)
+                             },
+                             push_column = function(size, index, where = "beforeEnd", reference = NULL) {
+                               ns <- NS(self$id)
+                               if(nrow(self$column)==0&&is.null(reference)){
+                                 self$column <- tibble(index = index,
+                                                       width = size,
+                                                       where = where,
+                                                       reference = ns("ShinyForm-Column-1"))
+                               } else if(is.null(reference)){
+                                 abort('reference must not be NULL')
+                               } else{
+                                 self$column <- dplyr::bind_rows(
+                                   self$column,
+                                   tibble(index = index,
+                                          width = size,
+                                          where = where,
+                                          reference = reference)
+                                 )
+                               }
+                               invisible(self)
+                             }
+                             
+                           ))
 
 ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 inherit = ShinyModule,
