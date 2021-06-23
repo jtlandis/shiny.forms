@@ -57,7 +57,7 @@ source(here("R/Basic_Inputs.R"))
 remove_shiny_inputs <- function(id, .input) {
   impl <- .subset2(.input, "impl")
   lgl <- id %in% impl$.values$keys()
-  if(any(!lgl)) warn(glue("The following `id`s were not found in shiny server input and cannot be removed : ", glue_collapse(glue("`{id[!lgl]}`"), sep = ", ", last = ", and ")))
+  if(any(!lgl)) warn(glue("The following `id`s were not found in shiny server input and cannot be removed : ", glue_collapse(id[!lgl]), sep = ", ", last = ", and "))
   to_rm <- id[lgl]
   invisible(
     lapply(to_rm, function(i) {
@@ -302,7 +302,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         self$layout$column$col[[wch]]
                                       } else {
                                         validate(need(nrow(self$layout$object)>0, "layout needs at least one element"))
-                                        lgl <- self$layout$object$dom %in% id)
+                                        lgl <- self$layout$object$dom %in% id
                                         wch <- which(lgl)
                                         validate(need(is_scalar_integer(wch), "multiple elements matched..."))
                                         self$layout$object$elements[[wch]]
@@ -373,7 +373,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       insertUI(paste0("#",ShinyForm_column_id()),
                                                where = "beforeEnd",
                                                ui = ele$ui(ns(id)))
-                                      print(self$layout$object)
+                                      moduleServer(id, ele$edit_mod)
                                       self$invalidate()
                                     })
                                     
