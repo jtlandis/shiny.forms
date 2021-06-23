@@ -3,7 +3,6 @@ R6Input <- R6::R6Class("R6Input",
                        inherit = ShinyModule,
                        public = list(
                          label = NULL,
-                         selected = FALSE,
                          initialize = function(id, label = NULL){
                            super$initialize(id)
                            self$label <- label
@@ -13,6 +12,9 @@ R6Input <- R6::R6Class("R6Input",
                          },
                          edit = function(id = self$id) {
                            stop("Cannot use R6Input `$edit`")
+                         },
+                         edit_mod = function(input, output, session) {
+                           stop("Cannot use R6Input `$edit_mod`")
                          },
                          preview = function(){
                            div(class = ifelse(self$selected,
