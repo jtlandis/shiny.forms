@@ -296,13 +296,13 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       if(is.null(id)) return(NULL)
                                       if(str_detect(id, "ShinyForm-Column")){ #is a column
                                         validate(need(nrow(self$layout$column)>0, "layout needs at least one column"))
-                                        lgl <- map_lgl(self$layout$column$col, ~ns(paste0(.x$id, "-ShinyForm-Column")) %in% id)
+                                        lgl <- self$layout$column$dom %in% id
                                         wch <- which(lgl)
                                         validate(need(is_scalar_integer(wch), "multiple elements matched..."))
                                         self$layout$column$col[[wch]]
                                       } else {
                                         validate(need(nrow(self$layout$object)>0, "layout needs at least one element"))
-                                        lgl <- map_lgl(self$layout$object$elements, ~ns(paste0(.x$id,"-user_input")) %in% id)
+                                        lgl <- self$layout$object$dom %in% id)
                                         wch <- which(lgl)
                                         validate(need(is_scalar_integer(wch), "multiple elements matched..."))
                                         self$layout$object$elements[[wch]]
@@ -410,16 +410,13 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       ele_id <- input$ShinyForm_selected_id
                                       ele$remove(input, NS(ns(ele$id)))
                                       if(str_detect(ele_id, "ShinyForm-Column")) {
-                                        col_ids <- map_chr(self$layout$column$col, ~ns(paste0(.x$id,"-ShinyForm-Column")))
                                         self$layout$column <- filter(self$layout$column,
-                                                                     !(.env$col_ids %in% .env$ele_id | parent %in% .env$ele_id))
+                                                                     !(dom %in% .env$ele_id | parent %in% .env$ele_id))
                                         if(ele_id %in% self$layout$object$parent) {
                                           self$layout$object <- filter(self$layout$object, !parent %in% .env$ele_id)
                                         }
                                       } else {
-                                        ele_ids <- map_chr(self$layout$object$elements, ~ns(paste0(.x$id,"-user_input")))
-                                        self$layout$object <- filter(self$layout$object,
-                                                                     !.env$ele_ids %in% .env$ele_id)
+                                        self$layout$object <- filter(self$layout$object, !dom %in% .env$ele_id)
                                       }
                                       session$sendCustomMessage("unselectShinyForm", list(id = ele_id))
                                     })
