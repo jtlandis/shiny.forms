@@ -3,9 +3,11 @@ R6Input <- R6::R6Class("R6Input",
                        inherit = ShinyModule,
                        public = list(
                          label = NULL,
-                         initialize = function(id, label = NULL){
+                         default = NULL,
+                         initialize = function(id, label = NULL, default = NULL){
                            super$initialize(id)
-                           self$label <- label
+                           self$label <- label 
+                           self$default <- default
                          },
                          ui = function(id = self$id) {
                            stop("Cannot use R6Input `$ui`")
@@ -37,8 +39,35 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                 ui = function(id = self$id){
                                   ns <- NS(id)
                                   tagList(
-                                    textInput(ns("user_input"), label = self$label, value = "")
+                                    textInput(ns("user_input"), label = self$label, value = self$default)
                                   )
+                                },
+                                edit = function(id = self$id){
+                                  ns <- NS(id)
+                                  tagList(
+                                    textInput(ns('label'), label = "Set Label", value = self$label),
+                                    textInput(ns('default'), label = "Set Default", value = self$default)
+                                  )
+                                },
+                                edit_mod = function(input, output, session){
+                                  ns <- session$ns
+                                  observe({
+                                    self$label <- input$label
+                                    self$default <- input$default
+                                    updateTextInput(session = session,
+                                                    inputId = "user_input",
+                                                    label = self$label, 
+                                                    value = self$default)
+                                  })
+                                },
+                                remove = function(input, ns = NULL){
+                                  ns <- ns %||% getDefaultReactiveDomain()$ns
+                                  removeUI(glue(".shiny-input-container:has(#{ns('label')})"))
+                                  removeUI(glue(".shiny-input-container:has(#{ns('default')})"))
+                                  removeUI(glue(".shiny-input-container:has(#{ns('user_input')})"))
+                                  if(!is.null(input)){
+                                    remove_shiny_inputs(c(ns('label'),ns('default'), ns('user_input')), input)
+                                  }
                                 }
                               ))
 
