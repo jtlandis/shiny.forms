@@ -70,7 +70,6 @@ updateShinyFormColumn <- function(id, width = 6, session){
     id = id,
     width = width
   )
-  print(m)
   validate(need(is.integer(width), "`width` must be an Integer"))
   session$sendCustomMessage("updateShinyFormColumn", m)
 }
@@ -201,46 +200,44 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                                self$id <- id
                              },
                              column = tibble(index = integer(),
-                                             width = integer()),
+                                             col = list(),
+                                             parent = character(),
+                                             dom = character()),
                              object = tibble(index = integer(),
-                                             width = integer(),
                                              elements = list(),
-                                             element_index = integer()),
+                                             parent = character(),
+                                             dom = character()),
                              #add_element = function(){},
-                             push_element = function(ele, index, reference) {
+                             push_element = function(ele, index, parent, dom) {
                                
                                if(is.null(index)){
                                  index <- max(self$column$index)
                                }
-                               object <- self$object[self$object$index%in%index,]
-                               if(nrow(object)==0){
-                                 newindx <- 1L
-                               } else {
-                                 newindx <- max(object$element_index) + 1L
-                               }
                                self$object <- dplyr::bind_rows(self$object,
                                                                tibble(index = index,
-                                                                      width = unique(self$column[self$column$index%in%index,]$col[[1]]$width),
                                                                       elements = list(ele),
-                                                                      element_index = newindx))
+                                                                      parent = parent,
+                                                                      dom = dom))
                                invisible(self)
                              },
-                             push_column = function(size, index, parent = NULL, session = NULL) {
-                               session <- session %||% getDefaultReactiveDomain() 
-                               ns <- session$ns %||% NS(self$id)
+                             push_column = function(size, index, parent = NULL, dom = NULL) {
+                               # session <- session %||% getDefaultReactiveDomain() 
+                               # ns <- session$ns %||% NS(self$id)
                                obj <- ShinyFormColumn$new(index, size)
                                if(is.null(parent)){
                                  abort('parent must not be NULL')
                                } else if(nrow(self$column)==0){
                                  self$column <- tibble(index = index,
                                                        col = list(obj),
-                                                       parent = parent)
+                                                       parent = parent,
+                                                       dom = dom)
                                } else {
                                  self$column <- dplyr::bind_rows(
                                    self$column,
                                    tibble(index = index,
                                           col = list(obj),
-                                          parent = parent)
+                                          parent = parent,
+                                          dom = dom)
                                  )
                                }
                                invisible(self)
@@ -346,7 +343,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       no_cols <- nrow(self$layout$column)==0
                                       self$layout$push_column(size = input$NewColSize,
                                                               index = numVal2(),
-                                                              parent = ifelse(no_cols,ns('ShinyForm-Sortable-Container'),ShinyForm_column_id()))
+                                                              parent = ifelse(no_cols,ns('ShinyForm-Sortable-Container'),ShinyForm_column_id()),
+                                                              dom = ns(glue("{numVal2()}-ShinyForm-Column")))
                                       col_proxy <- filter(self$layout$column, index == numVal2())$col[[1]]
                                       insertUI(glue("#{ifelse(no_cols,ns('ShinyForm-Sortable-Container'),ShinyForm_column_id())}"),
                                                where = "beforeEnd",
@@ -364,14 +362,14 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       validate(need(!is.null(ShinyForm_column_id()), "Select a Column "))
                                       i <- sprintf("%04d", numVal())
                                       id <- sprintf("FormTextInput%s", i)
-                                      indx <- filter(self$layout$column,
-                                                     map_chr(self$layout$column$col,
-                                                             ~ns(paste0(.x$id,"-ShinyForm-Column"))) %in% ShinyForm_column_id()) %>%
+                                      indx <- self$layout$column %>%
+                                        filter(dom %in% ShinyForm_column_id()) %>%
                                         pull(index)
                                       ele <- R6TextInput$new(id)
                                       self$layout$push_element(ele = ele,
                                                                index = indx,
-                                                               reference = ShinyForm_column_id())
+                                                               parent = ShinyForm_column_id(),
+                                                               dom = ns(glue("{id}-user_input")))
                                       insertUI(paste0("#",ShinyForm_column_id()),
                                                where = "beforeEnd",
                                                ui = ele$ui(ns(id)))
@@ -412,13 +410,16 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       ele_id <- input$ShinyForm_selected_id
                                       ele$remove(input, NS(ns(ele$id)))
                                       if(str_detect(ele_id, "ShinyForm-Column")) {
+                                        col_ids <- map_chr(self$layout$column$col, ~ns(paste0(.x$id,"-ShinyForm-Column")))
                                         self$layout$column <- filter(self$layout$column,
-                                                                     !map_chr(self$layout$column$col,
-                                                                              ~ns(paste0(.x$id,"-ShinyForm-Column"))) %in% ele_id)
+                                                                     !(.env$col_ids %in% .env$ele_id | parent %in% .env$ele_id))
+                                        if(ele_id %in% self$layout$object$parent) {
+                                          self$layout$object <- filter(self$layout$object, !parent %in% .env$ele_id)
+                                        }
                                       } else {
+                                        ele_ids <- map_chr(self$layout$object$elements, ~ns(paste0(.x$id,"-user_input")))
                                         self$layout$object <- filter(self$layout$object,
-                                                                     !map_chr(self$layout$object$elements,
-                                                                              ~ns(paste0(.x$id,"-user_input"))) %in% ele_id)
+                                                                     !.env$ele_ids %in% .env$ele_id)
                                       }
                                       session$sendCustomMessage("unselectShinyForm", list(id = ele_id))
                                     })
