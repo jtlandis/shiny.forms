@@ -8,8 +8,11 @@ R6Input <- R6::R6Class("R6Input",
                            super$initialize(id)
                            self$label <- label
                          },
-                         ui = function() {
-                           stop("Cannot use R6Input")
+                         ui = function(id = self$id) {
+                           stop("Cannot use R6Input `$ui`")
+                         },
+                         edit = function(id = self$id) {
+                           stop("Cannot use R6Input `$edit`")
                          },
                          preview = function(){
                            div(class = ifelse(self$selected,
