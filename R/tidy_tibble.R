@@ -15,8 +15,17 @@ as_tidy_tibble <- function(x) {
   structure(x, class = c("tidy_tbl", class(x)))
 }
 `[.tidy_tbl` <- function(x, i, j, drop = FALSE) {
-  if(!missing(i)){
-    i_quo <- enquo(i)
+  i_quo <- enquo(i)
+  j_quo <- enquo(j)
+  n_real_args <- nargs() - !missing(drop)
+  if (n_real_args <= 2L) {
+    if(!missing(drop)){
+      warn("`drop` argument ignored for subsetting a tibble with `x[j]`, it has an effect only for `x[i, j]`.")
+      drop <- FALSE
+    }
+    #attempt to eval as if j
+    i <- tidyselect::eval_select(i_quo, x)
+  } else if (!missing(i)){
     i <- eval_tidy(i_quo, x)
   }
   
@@ -24,16 +33,32 @@ as_tidy_tibble <- function(x) {
     j_quo <- enquo(j)
     j <- tidyselect::eval_select(j_quo, x)
   }
-  
-  NextMethod("[", x, i = i, j = j, drop = drop)
+  NextMethod("[")
 }
 
 `[<-.tidy_tbl` <- function(x, i, j, value) {
-  if(!missing(i)){
-    i <- eval_tidy(enquo(i), x)
+  i_quo <- enquo(i)
+  j_quo <- enquo(j)
+  n_real_args <- nargs()
+  if (n_real_args <= 3L) {
+    #attempt to eval as if j
+    i <- tryCatch(tidyselect::eval_select(i_quo, x),
+                  error = function(e){
+                    get_sym2str(i_quo)
+                  }) 
+  } else if (!missing(i)){
+    i <- eval_tidy(i_quo, x)
   }
-  if(!missing(j)) {
-    j <- eval_tidy(enquo(j), x)
+  
+  if(!missing(j)){
+    j_quo <- enquo(j)
+    j <- tidyselect::eval_select(j_quo, x)
   }
-  NextMethod("[<-", x, i = i, j = j, value = value)
+  NextMethod("[<-")
 }
+
+get_sym2str <- function(x) UseMethod("get_sym2str")
+get_sym2str.default <- function(x) NULL
+get_sym2str.call <- function(x) unlist(lapply(x[-1L], get_sym2str))
+get_sym2str.name <- function(x) as.character(x)
+get_sym2str.quosure <- function(x) get_sym2str(quo_get_expr(x))
