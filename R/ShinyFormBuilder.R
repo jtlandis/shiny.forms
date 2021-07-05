@@ -212,6 +212,12 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                              initialize = function(id = NULL){
                                self$id <- id
                              },
+                             objects = tidy_tibble(
+                               obj = list(),
+                               parent = character(),
+                               dom = character(),
+                               type = character()
+                             ),
                              column = tidy_tibble(index = integer(),
                                              col = list(),
                                              parent = character(),
@@ -220,7 +226,15 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                                              elements = list(),
                                              parent = character(),
                                              dom = character()),
-                             #add_element = function(){},
+                             add_object = function(obj, parent, dom, type){
+                               self$objects <- 
+                                 bind_rows(self$objects,
+                                           tidy_tibble(obj = list(obj),
+                                                       parent = parent,
+                                                       dom = dom,
+                                                       type = type))
+                               invisible(self)
+                             },
                              push_element = function(ele, index, parent, dom) {
                                
                                if(is.null(index)){
@@ -354,13 +368,14 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     
                                     observeEvent(input$InsertColumn, {
                                       removeModal()
-                                      no_cols <- nrow(self$layout$column)==0
-                                      self$layout$push_column(size = input$NewColSize,
-                                                              index = numVal2(),
-                                                              parent = ifelse(no_cols,ns('ShinyForm-Sortable-Container'),ShinyForm_column_id()),
-                                                              dom = ns(glue("{numVal2()}-ShinyForm-Column")))
-                                      col_proxy <- filter(self$layout$column, index == numVal2())$col[[1]]
-                                      insertUI(glue("#{ifelse(no_cols,ns('ShinyForm-Sortable-Container'),ShinyForm_column_id())}"),
+                                      no_cols <- nrow(self$layout$objects[type=="column",])==0
+                                      col_proxy <- ShinyFormColumn$new(numVal2(), size = input$NewColSize)
+                                      parent <- ifelse(no_cols,ns('ShinyForm-Sortable-Container'),ShinyForm_column_id())
+                                      self$layout$add_object(obj = col_proxy,
+                                                             parent = parent,
+                                                             dom = ns(glue("{numVal2()}-ShinyForm-Column")),
+                                                             type = "column")
+                                      insertUI(glue("#{parent}"),
                                                where = "beforeEnd",
                                                ui = col_proxy$ui(ns(col_proxy$id)))
                                       col_proxy$call() #insure things that need to be reactive are active
@@ -501,9 +516,5 @@ shinyApp(ui = fluidPage(
   
 })
 
-# random_html_color <- function(){
-#   str_c(sample(c("0","1","2","3","4","5","6","7","8","9",
-#                  "A","B","C","D","E","F"), 6, replace = T), collapse = "")
-# }
 
 
