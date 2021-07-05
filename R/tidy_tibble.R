@@ -1,4 +1,9 @@
 
+# random_html_color <- function(){
+#   str_c(sample(c("0","1","2","3","4","5","6","7","8","9",
+#                  "A","B","C","D","E","F"), 6, replace = T), collapse = "")
+# }
+
 #' @name tidy_tibble
 #' @description An additional class to extend `tibble()` to allow
 #' for NSE filtering on `i`, and tidyselect functionality on `j`.
@@ -7,7 +12,7 @@ tidy_tibble <- function(..., .rows = NULL, .name_repair = c("check_unique",
                                                      "unique", "universal", "minimal")) {
   x <- match.call()
   x[[1]] <- quote(tibble)
-  dtbl <- eval(x)
+  dtbl <- eval_tidy(x, env = caller_env())
   structure(dtbl, class = c("tidy_tbl", class(dtbl)))
 }
 as_tidy_tibble <- function(x) {
@@ -44,7 +49,7 @@ as_tidy_tibble <- function(x) {
     #attempt to eval as if j
     i <- tryCatch(tidyselect::eval_select(i_quo, x),
                   error = function(e){
-                    get_sym2str(i_quo)
+                    eval_tidy(i_quo, x)
                   }) 
   } else if (!missing(i)){
     i <- eval_tidy(i_quo, x)
