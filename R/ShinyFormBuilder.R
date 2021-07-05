@@ -65,7 +65,7 @@ remove_shiny_inputs <- function(id, .input) {
     })
   )
 }
-updateShinyFormColumn <- function(id, width = 6, session){
+updateShinyFormColumn <- function(id, width = 6L, session){
   m <- list(
     id = id,
     width = width
@@ -75,13 +75,25 @@ updateShinyFormColumn <- function(id, width = 6, session){
 }
 get_ShinyForm_Element <- function(id, ns = NULL){
   selected <- "ShinyForm_selected_id"
+  dom <- "ShinyForm_ele_ordered"
   if(!is.null(ns)){
     id <- ns(id)
     selected <- ns(selected)
+    dom <- ns(dom)
   }
   glue::glue(
     .open = "<", .close = ">", .sep = "\n",
     "
+    Shiny.addCustomMessageHandler('orderElementIDs', orderElementIDs)
+    function orderElementIDs(message) {
+      let ids = [];
+      $(message.query).map((index,ele) =>{
+        ids.push(ele.id);
+        });
+      console.log(ids);
+      console.log('<dom>');
+      Shiny.setInputValue('<dom>', ids, {priority: 'event'});
+    }
     Shiny.addCustomMessageHandler('updateShinyFormColumn', updateShinyFormColumn);
     function updateShinyFormColumn(message) {
       let col = $('#' + message.id);
@@ -261,7 +273,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         actionButton(ns("rmcolumn"), NULL, icon = icon("minus")),
                                         actionButton(ns("editcolumn"), NULL, icon = icon("edit")),
                                         actionButton(ns("TextInput"), NULL, icon = icon("text")),
-                                        actionButton(ns("SelectInput"), NULL)
+                                        actionButton(ns("SelectInput"), NULL),
+                                        actionButton(ns("Save"), NULL, icon = icon("save"))
                                       ),
                                       br(),
                                       fluidRow(class = "ShinyForm-Container",
@@ -424,6 +437,23 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     output$View <- renderPrint({
                                       validate(need(input$Preview_Sortable_Order, "Nothing to View"))
                                       input$Preview_Sortable_Order
+                                    })
+                                    
+                                    observeEvent(input$Save, {
+                                      tib <- bind_rows(self$layout$column,
+                                                       self$layout$object)
+                                      m <- list(query = glue_collapse(glue("#{tib$dom}"),sep = ","))
+                                      session$sendCustomMessage("orderElementIDs", m)
+                                    })
+                                    
+                                    observe({
+                                      req(input$ShinyForm_ele_ordered)
+                                      ids_ord <- input$ShinyForm_ele_ordered
+                                      col_ord <- ids_ord[ids_ord %in% self$layout$column$dom]
+                                      self$layout$column <- self$layout$column[sort_by(self$layout$column$dom, col_ord),]
+                                      obj_ord <- ids_ord[ids_ord %in% self$layout$object$dom]
+                                      self$layout$object <- self$layout$object[sort_by(self$layout$object$dom, obj_ord),]
+                                      
                                     })
                                     
                                     
