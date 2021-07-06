@@ -276,19 +276,20 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 inherit = ShinyModule,
                                 public = list(
                                   layout = NULL,
+                                  modules = NULL,
                                   initialize = function(id){
                                     super$initialize(id)
                                     self$layout <- ShinyLayout$new(id = id)
+                                    self$modules <- list(
+                                      column = SFC_Column$new('column'),
+                                      textInput = SFC_TextInput$new('textInput')
+                                    )
                                   },
                                   ui = function(id = self$id) {
                                     ns <- NS(id)
                                     tagList(
                                       fluidRow(
-                                        actionButton(ns("addcolumn"), NULL, icon = icon("plus")),
-                                        actionButton(ns("rmcolumn"), NULL, icon = icon("minus")),
-                                        actionButton(ns("editcolumn"), NULL, icon = icon("edit")),
-                                        actionButton(ns("TextInput"), NULL, icon = icon("text")),
-                                        actionButton(ns("SelectInput"), NULL),
+                                        lapply(self$modules, function(x){x$ui(ns(x$id))}),
                                         actionButton(ns("Save"), NULL, icon = icon("save"))
                                       ),
                                       br(),
@@ -324,44 +325,25 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         num()
                                       })
                                     })
+                                    parent_id <- reactive({
+                                      browser()
+                                      no_cols <- nrow(self$layout$objects[type=="column",])==0
+                                      ifelse(no_cols,ns('ShinyForm-Sortable-Container'),input$ShinyForm_selected_id)
+                                    })
+                                    
+                                    built_obj <- lapply(self$modules, function(x, layout, selected_id){
+                                      x$call(layout = layout, selected = selected_id)
+                                      }, layout = self$layout, selected_id = parent_id)
+                                    
                                     
                                     clicked_element <- reactive({
                                       id <- input$ShinyForm_selected_id
                                       if(is.null(id)) return(NULL)
-                                      if(str_detect(id, "ShinyForm-Column")){ #is a column
-                                        validate(need(nrow(self$layout$column)>0, "layout needs at least one column"))
-                                        lgl <- self$layout$column$dom %in% id
-                                        wch <- which(lgl)
-                                        validate(need(is_scalar_integer(wch), "multiple elements matched..."))
-                                        self$layout$column$col[[wch]]
-                                      } else {
-                                        validate(need(nrow(self$layout$object)>0, "layout needs at least one element"))
-                                        lgl <- self$layout$object$dom %in% id
-                                        wch <- which(lgl)
-                                        validate(need(is_scalar_integer(wch), "multiple elements matched..."))
-                                        self$layout$object$elements[[wch]]
-                                      }
+                                      self$layout$objects[dom %in% id, obj, drop = T][[1L]]
                                     })
                                     
-                                    ShinyForm_column_id <- reactive({
-                                      id <- input$ShinyForm_selected_id
-                                      if(is.null(id)||str_detect(id, "ShinyForm-Column", negate = T)) return(NULL)
-                                      id
-                                    })
-                                    
-                                    observeEvent(input$addcolumn, {
-                                      if(nrow(self$layout$column)>0){
-                                        validate(need(ShinyForm_column_id(), "Select a column First"))
-                                      }
-                                      showModal(
-                                        modalDialog(
-                                          fluidRow(
-                                            numericInput(ns("NewColSize"), "Column Width", value = 6L, min = 1L, max = 12L)),
-                                          footer = tagList(
-                                            modalButton("Cancel"),
-                                            actionButton(ns("InsertColumn"), "OK")
-                                        )
-                                      ))
+                                    observe({
+                                      built_obj[[]]
                                     })
                                     
                                     observeEvent(input$InsertColumn, {
