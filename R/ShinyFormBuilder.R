@@ -317,7 +317,13 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     ns <- session$ns
                                     s <- self$reactive()
                                     num <- reactiveVal(0L)
-                                    num2 <- reactiveVal(1L)
+                                    counter <- reactive({
+                                      isolate({
+                                        new_val <- num() + 1L
+                                        num(new_val)
+                                        num()
+                                      })
+                                    })
                                     
                                     clicked_element <- reactive({
                                       id <- input$ShinyForm_selected_id
@@ -357,29 +363,23 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         )
                                       ))
                                     })
-                                    numVal2 <- reactive({
-                                      validate(need(input$InsertColumn, "Need to add a text element"))
-                                      isolate({
-                                        newVal <- num2() + 1L
-                                        num2(newVal)
-                                        num2()
-                                      })
-                                    })
                                     
                                     observeEvent(input$InsertColumn, {
                                       removeModal()
+                                      browser()
                                       no_cols <- nrow(self$layout$objects[type=="column",])==0
-                                      col_proxy <- ShinyFormColumn$new(numVal2(), size = input$NewColSize)
+                                      index <- counter()
+                                      col_proxy <- ShinyFormColumn$new(index, width = input$NewColSize)
                                       parent <- ifelse(no_cols,ns('ShinyForm-Sortable-Container'),ShinyForm_column_id())
                                       self$layout$add_object(obj = col_proxy,
                                                              parent = parent,
-                                                             dom = ns(glue("{numVal2()}-ShinyForm-Column")),
+                                                             dom = ns(glue("{index}-ShinyForm-Column")),
                                                              type = "column")
                                       insertUI(glue("#{parent}"),
                                                where = "beforeEnd",
                                                ui = col_proxy$ui(ns(col_proxy$id)))
                                       col_proxy$call() #insure things that need to be reactive are active
-                                      print(self$layout$column)
+                                      print(self$layout$objects)
                                       self$invalidate()
                                     })
                                     
@@ -389,17 +389,16 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     
                                     observeEvent(input$TextInput, {
                                       validate(need(!is.null(ShinyForm_column_id()), "Select a Column "))
-                                      i <- sprintf("%04d", numVal())
+                                      index <- counter()
+                                      i <- sprintf("%04d", index)
                                       id <- sprintf("FormTextInput%s", i)
-                                      indx <- self$layout$column %>%
-                                        filter(dom %in% ShinyForm_column_id()) %>%
-                                        pull(index)
                                       ele <- R6TextInput$new(id)
-                                      self$layout$push_element(ele = ele,
-                                                               index = indx,
-                                                               parent = ShinyForm_column_id(),
-                                                               dom = ns(glue("{id}-user_input")))
-                                      insertUI(paste0("#",ShinyForm_column_id()),
+                                      parent <- ShinyForm_column_id()
+                                      self$layout$add_object(obj = ele,
+                                                             parent = parent,
+                                                             dom = ns(glue("{id}-user_input")),
+                                                             type = 'element')
+                                      insertUI(glue("#{parent}"),
                                                where = "beforeEnd",
                                                ui = ele$ui(ns(id)))
                                       moduleServer(id, ele$edit_mod)
@@ -407,21 +406,10 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     })
                                     
                                     
-                                    numVal <- reactive({
-                                      validate(need(input$TextInput, "Need to add a text element"))
-                                      isolate({
-                                        newVal <- num() + 1L
-                                        num(newVal)
-                                        num()
-                                        })
-                                      })
-                                    
-                                    
-                                    
                                     output$PREVIEW <- renderUI({
                                       validate(
                                         need(NULL, "disabled"),
-                                        need(nrow(s()$layout$object)>0||nrow(s()$layout$column)>0, "Need to Add Elements"))
+                                        need(nrow(s()$layout$objects)>0||nrow(s()$layout$column)>0, "Need to Add Elements"))
                                       s()$preview_layout()
                                     })
                                     
