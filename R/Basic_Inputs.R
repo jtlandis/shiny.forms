@@ -1,5 +1,5 @@
 empty_on_0str <- function(x) {
-  if(!is.null(x)&&(length(x)==0||(is.character(x)&&x==""))) return(character())
+  if(is.null(x)&&(length(x)==0||(is.character(x)&&x==""))) return(character())
   x
 }
 R6Input <- R6::R6Class("R6Input",

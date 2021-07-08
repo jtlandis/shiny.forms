@@ -270,8 +270,16 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       useShinyjs(),
                                       fluidRow(
                                         eval_tidy(addmenu),
-                                        actionButton(ns("rm"), NULL, icon = icon('minus')),
-                                        actionButton(ns("Save"), NULL, icon = icon("save"))
+                                        actionButton(ns("rm"), NULL, icon = icon('minus'), class = 'btn-danger'),
+                                        dropdownButton(inputId = ns('MoveElement'),
+                                                       status = "primary",
+                                                       circle = F, inline = T,
+                                                       icon = icon('share-square'),
+                                                       selectInput('parent_select', "Select New Parent",
+                                                                   choices = c("none"), multiple = F),
+                                                       actionBttn(ns('mv'), label = 'Move', style = 'material-flat', 
+                                                                  block = T, color = 'warning')),
+                                        actionButton(ns("Save"), NULL, icon = icon("save"), class = 'btn-primary')
                                       ),
                                       br(),
                                       fluidRow(class = "ShinyForm-Container",
@@ -296,6 +304,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     ns <- session$ns
                                     s <- self$reactive()
                                     disable('rm')
+                                    disable('MoveElement')
                                     parent_id <- reactive({
                                       selected_id <- input$ShinyForm_selected_id
                                       objects <- self$layout$objects
@@ -315,8 +324,10 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       selected_id <- input$ShinyForm_selected_id
                                       if(is.null(selected_id)||length(selected_id)==0){
                                         disable('rm')
+                                        disable('MoveElement')
                                       } else {
                                         enable('rm')
+                                        enable('MoveElement')
                                       }
                                     })
                                     #call each constructor object's module
