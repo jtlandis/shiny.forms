@@ -2,6 +2,7 @@
 R6Input <- R6::R6Class("R6Input",
                        inherit = ShinyModule,
                        public = list(
+                         inner_id = 'user_input',
                          label = NULL,
                          default = NULL,
                          initialize = function(id, label = NULL, default = NULL){
@@ -28,6 +29,7 @@ R6Input <- R6::R6Class("R6Input",
                        ),
                        private = list(
                          server = function(input, output, session){
+                           ns <- session$ns
                            value <- reactive(input$user_input)
                            return(list(value = value))
                          }
