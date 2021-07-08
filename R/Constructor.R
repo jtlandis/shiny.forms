@@ -3,6 +3,10 @@
 SFConstructor <- R6::R6Class("ShinyFromConstructor",
                            inherit = ShinyModule,
                            public = list(
+                             initialize = function(id){
+                               super$initialize(id)
+                               if(!inherits(private$R6,"R6ClassGenerator")) stop("ShinyFormConstructor can only carry a `R6ClassGenerator` object")
+                             },
                              ui = function(id = self$id){
                                ns <- NS(id)
                                tagList(
