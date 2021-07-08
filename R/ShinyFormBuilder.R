@@ -2,6 +2,8 @@ library(shiny)
 library(R6)
 library(purrr)
 library(sortable)
+library(shinyWidgets)
+library(shinyjs)
 library(tidyr)
 library(dplyr)
 library(tibble)
@@ -11,7 +13,11 @@ library(here)
 library(glue)
 ShinyModule <- R6::R6Class("ShinyModule",
                            public = list(
+                             #' ID that is assigned by the user.
                              id = NULL,
+                             #' An ID that is used within `$ui` that is
+                             #' may be of some care for the user.
+                             inner_id = NULL,
                              initialize = function(id){
                                private$reactiveDep <- function(x) NULL
                                self$id <- id
@@ -54,6 +60,7 @@ ShinyModule <- R6::R6Class("ShinyModule",
                            ))
 source(here("R/Basic_Inputs.R"))
 source(here("R/tidy_tibble.R"))
+source(here("R/Constructor.R"))
 "%||%" <- function(a,b) if(is.null(a)) b else a
 remove_shiny_inputs <- function(id, .input) {
   impl <- .subset2(.input, "impl")
@@ -77,10 +84,12 @@ updateShinyFormColumn <- function(id, width = 6L, session){
 get_ShinyForm_Element <- function(id, ns = NULL){
   selected <- "ShinyForm_selected_id"
   dom <- "ShinyForm_ele_ordered"
+  children <- "ShinyForm_children"
   if(!is.null(ns)){
     id <- ns(id)
     selected <- ns(selected)
     dom <- ns(dom)
+    children <- ns(children)
   }
   glue::glue(
     .open = "<", .close = ">", .sep = "\n",
@@ -91,8 +100,6 @@ get_ShinyForm_Element <- function(id, ns = NULL){
       $(message.query).map((index,ele) =>{
         ids.push(ele.id);
         });
-      console.log(ids);
-      console.log('<dom>');
       Shiny.setInputValue('<dom>', ids, {priority: 'event'});
     }
     Shiny.addCustomMessageHandler('updateShinyFormColumn', updateShinyFormColumn);
@@ -109,13 +116,26 @@ get_ShinyForm_Element <- function(id, ns = NULL){
       ShinyForm_selected = null;
       Shiny.setInputValue('<selected>', null, {priority: 'event'})
     }
+    Shiny.addCustomMessageHandler('findSubElements', findSubElements)
+    function findSubElements(message) {
+      if(ShinyForm_selected==null) {
+        Shiny.setInputValue('<children>', null, {priority: 'event'}) ;
+        return ;
+      } 
+      let ids = [];
+      $('.ShinyForm-selected').find(message.query).map((index, ele) => {
+        ids.push(ele.id); 
+        });
+      console.log(ids);
+      Shiny.setInputValue('<children>', ids, {priority: 'event'});
+    }
     function ShinyColumn(el){
-      if (el.classList.contains('ShinyForm-Column')) { 
+      if (el.classList.contains('ShinyForm-Column')||el.classList.contains('ShinyForm-Preview-Container')) { 
         return el;
       }
       while(el && el.parentNode) {
         el = el.parentNode;
-        if(el.classList.contains('ShinyForm-Column')) {
+        if(el.classList.contains('ShinyForm-Column')||el.classList.contains('ShinyForm-Preview-Container')) {
           return el;
         }
       }
@@ -156,6 +176,7 @@ sort_by <- function(x, by){
 ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                inherit = ShinyModule,
                                public = list(
+                                 inner_id = "ShinyForm-Column",
                                  initialize = function(id, width){
                                    super$initialize(id)
                                    self$width <- width
@@ -163,17 +184,14 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                  width = NULL,
                                  ui = function(id = self$id){
                                    ns <- NS(id)
-                                   div(class = ns("ShinyForm-Column-Container"),
+                                   div(class = ns(glue("{self$inner_id}-Container")),
                                        column(
                                          self$width,
-                                         id = ns("ShinyForm-Column"),
-                                         `data-rank-id` = paste0(ns("ShinyForm-Column"),'-',self$width),
+                                         id = ns(self$inner_id),
+                                         `data-rank-id` = paste0(ns(self$inner_id),'-',self$width),
                                          class = "ShinyForm-Column"
                                        ),
-                                       sortable_js(ns("ShinyForm-Column"),
-                                                   options = sortable_options(
-                                                     #onSort = sortable_js_capture_input(ns(paste0("Preview_Sortable_Order-", index))) #may change how we get order later.
-                                                   ))
+                                       sortable_js(ns(self$inner_id))
                                    )
                                    
                                  },
@@ -184,25 +202,22 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                                   value = self$width, min = 1, max = 12)
                                    )
                                  },
-                                 remove = function(input, ns = NULL){
-                                   ns <- ns %||% getDefaultReactiveDomain()$ns
-                                   removeUI(glue(".shiny-input-container:has(#{ns('width')})"))
-                                   removeUI(glue(".{ns('ShinyForm-Column-Container')}:has(#{ns('ShinyForm-Column')})"))
-                                   if(!is.null(input)){
-                                     remove_shiny_inputs(ns('width'), input)
-                                   }
-                                 }
-                               ),
-                               private = list(
-                                 server = function(input, output, session){
+                                 edit_mod = function(input, output, session){
                                    ns <- session$ns
                                    observe({
                                      req(input$width)
                                      self$width <- input$width
                                      updateShinyFormColumn(id = ns("ShinyForm-Column"), width = input$width, session = session)
                                    })
-                                   
-                                   
+                                 },
+                                 remove = function(input, ns = NULL){
+                                   ns <- ns %||% getDefaultReactiveDomain()$ns
+                                   id <- self$inner_id
+                                   removeUI(glue(".shiny-input-container:has(#{ns('width')})"))
+                                   removeUI(glue(".{ns(paste0(id,'-Container'))}:has(#{ns(id)})"))
+                                   if(!is.null(input)){
+                                     remove_shiny_inputs(ns('width'), input)
+                                   }
                                  }
                                ))
 
@@ -287,9 +302,17 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   },
                                   ui = function(id = self$id) {
                                     ns <- NS(id)
+                                    mods <- lapply(self$modules, function(x){x$ui(ns(x$id))})
+                                    addmenu <- quo(dropdownButton(inputId = ns('AddElement'),
+                                                       icon = icon('plus'),
+                                                       status = "primary",
+                                                       circle = F, inline = T,
+                                                       !!!mods))
                                     tagList(
+                                      useShinyjs(),
                                       fluidRow(
-                                        lapply(self$modules, function(x){x$ui(ns(x$id))}),
+                                        eval_tidy(addmenu),
+                                        actionButton(ns("rm"), NULL, icon = icon('minus')),
                                         actionButton(ns("Save"), NULL, icon = icon("save"))
                                       ),
                                       br(),
@@ -298,10 +321,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                       fluidRow(
                                                         class = "ShinyForm-Preview-Container",
                                                         id = ns("ShinyForm-Sortable-Container")),
-                                                      sortable_js(ns("ShinyForm-Sortable-Container"),
-                                                                  options = sortable_options(
-                                                                    onSort = sortable_js_capture_input(ns("Preview_Sortable_Order"))
-                                                                  ))),
+                                                      sortable_js(ns("ShinyForm-Sortable-Container"))),
                                                column(3,
                                                       uiOutput(ns("SELECTED"))
                                                )
@@ -317,106 +337,121 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   server = function(input, output, session){
                                     ns <- session$ns
                                     s <- self$reactive()
-                                    num <- reactiveVal(0L)
-                                    counter <- reactive({
-                                      isolate({
-                                        new_val <- num() + 1L
-                                        num(new_val)
-                                        num()
-                                      })
-                                    })
+                                    disable('rm')
                                     parent_id <- reactive({
-                                      browser()
-                                      no_cols <- nrow(self$layout$objects[type=="column",])==0
-                                      ifelse(no_cols,ns('ShinyForm-Sortable-Container'),input$ShinyForm_selected_id)
+                                      selected_id <- input$ShinyForm_selected_id
+                                      objects <- self$layout$objects
+                                      if(is.null(selected_id)){
+                                        return(ns("ShinyForm-Sortable-Container"))
+                                      } else if(selected_id %in% objects$parent) {
+                                        return(selected_id)
+                                      } else if (selected_id %in% objects$dom) {
+                                        if(objects[dom %in% .env$selected_id,]$type=="column") {
+                                          return(selected_id)
+                                        }
+                                        return(objects[dom %in% .env$selected_id,]$parent)
+                                      }
                                     })
                                     
-                                    built_obj <- lapply(self$modules, function(x, layout, selected_id){
-                                      x$call(layout = layout, selected = selected_id)
-                                      }, layout = self$layout, selected_id = parent_id)
-                                    
+                                    observe({
+                                      selected_id <- input$ShinyForm_selected_id
+                                      if(is.null(selected_id)||length(selected_id)==0){
+                                        disable('rm')
+                                      } else {
+                                        enable('rm')
+                                      }
+                                    })
+                                    #call each constructor object's module
+                                    built_obj <- lapply(self$modules,function(x){x$call()})
+                                    #If a constructor's init is clicked - close menu
+                                    lapply(built_obj,
+                                           function(mod){
+                                             observeEvent(mod$clicked(), {
+                                               toggleDropdownButton('AddElement', session = session)
+                                             })
+                                           })
+                                    #Add element to page if `insert` is active
+                                    lapply(names(built_obj),
+                                           function(mod){
+                                             observeEvent(built_obj[[mod]]$insert(), {
+                                               obj <- built_obj[[mod]]$value()
+                                               parent <- parent_id()
+                                               self$layout$add_object(obj = obj,
+                                                                      parent = parent,
+                                                                      dom = ns(glue("{obj$id}-{obj$inner_id}")),
+                                                                      type = mod)
+                                               insertUI(glue("#{parent}"),
+                                                        where = "beforeEnd",
+                                                        ui = obj$ui(ns(obj$id)),
+                                                        immediate = T)
+                                               moduleServer(obj$id, obj$edit_mod) #insure things that need to be reactive are active
+                                               print(self$layout$objects)
+                                               s()$invalidate()
+                                             })
+                                           })
                                     
                                     clicked_element <- reactive({
                                       id <- input$ShinyForm_selected_id
                                       if(is.null(id)) return(NULL)
-                                      self$layout$objects[dom %in% id, obj, drop = T][[1L]]
+                                      res <- self$layout$objects[dom %in% .env$id, obj, drop = T]
+                                      validate(need(length(res)==1, "There was a problem with `clicked_element`"))
+                                      res[[1L]]
                                     })
                                     
-                                    observe({
-                                      built_obj[[]]
-                                    })
                                     
-                                    observeEvent(input$InsertColumn, {
-                                      removeModal()
-                                      browser()
-                                      no_cols <- nrow(self$layout$objects[type=="column",])==0
-                                      index <- counter()
-                                      col_proxy <- ShinyFormColumn$new(index, width = input$NewColSize)
-                                      parent <- ifelse(no_cols,ns('ShinyForm-Sortable-Container'),ShinyForm_column_id())
-                                      self$layout$add_object(obj = col_proxy,
-                                                             parent = parent,
-                                                             dom = ns(glue("{index}-ShinyForm-Column")),
-                                                             type = "column")
-                                      insertUI(glue("#{parent}"),
-                                               where = "beforeEnd",
-                                               ui = col_proxy$ui(ns(col_proxy$id)))
-                                      col_proxy$call() #insure things that need to be reactive are active
-                                      print(self$layout$objects)
-                                      self$invalidate()
-                                    })
                                     
                                     observeEvent(input$Layout, {
                                       
                                     })
                                     
-                                    observeEvent(input$TextInput, {
-                                      validate(need(!is.null(ShinyForm_column_id()), "Select a Column "))
-                                      index <- counter()
-                                      i <- sprintf("%04d", index)
-                                      id <- sprintf("FormTextInput%s", i)
-                                      ele <- R6TextInput$new(id)
-                                      parent <- ShinyForm_column_id()
-                                      self$layout$add_object(obj = ele,
-                                                             parent = parent,
-                                                             dom = ns(glue("{id}-user_input")),
-                                                             type = 'element')
-                                      insertUI(glue("#{parent}"),
-                                               where = "beforeEnd",
-                                               ui = ele$ui(ns(id)))
-                                      moduleServer(id, ele$edit_mod)
-                                      self$invalidate()
-                                    })
-                                    
-                                    
-                                    output$PREVIEW <- renderUI({
-                                      validate(
-                                        need(NULL, "disabled"),
-                                        need(nrow(s()$layout$objects)>0||nrow(s()$layout$column)>0, "Need to Add Elements"))
-                                      s()$preview_layout()
-                                    })
                                     
                                     output$SELECTED <- renderUI({
                                       ele <- clicked_element()
                                       validate(need(!is.null(ele), "No UI provided"))
                                       tagList(
-                                        actionButton(ns("rm"), '', icon = icon('minus')),
                                         ele$edit(ns(ele$id))
                                       )
                                     })
                                     
+                                    observe({
+                                      input$ShinyForm_selected_id
+                                      dom <- s()$layout$objects$dom
+                                      m <- list(query = glue_collapse(glue("#{dom}"),sep = ","))
+                                      session$sendCustomMessage('findSubElements', m)
+                                    })
+                                    
+                                    
+                                    continue_remove <- reactiveVal(0L)
                                     observeEvent(input$rm,{
+                                      ele_children <- input$ShinyForm_children
+                                      if(!is.null(ele_children)){
+                                        showModal(
+                                          modalDialog(
+                                            p(glue("There are {length(ele_children)} within the selected element. If you continue,",
+                                                   "you will delete these elements as well. Do you still want to continue?")),
+                                            # div(class = "ShinyFormModal-Container"),
+                                            footer = tagList(
+                                              modalButton("Cancel!"),
+                                              actionButton(ns("removeThis"), "Continue!")
+                                            )
+                                          )
+                                        )
+                                      } else {
+                                        ele <- clicked_element()
+                                        ele_id <- input$ShinyForm_selected_id
+                                        ele$remove(input, NS(ns(ele$id)))
+                                        self$layout$objects <- self$layout$objects[!(dom %in% c(.env$ele_id, .env$ele_children)),]
+                                        session$sendCustomMessage("unselectShinyForm", list(id = ele_id))
+                                      }
+                                    }, priority = 0L)
+                                    
+                                    observeEvent(input$removeThis,{
+                                      removeModal()
                                       ele <- clicked_element()
                                       ele_id <- input$ShinyForm_selected_id
+                                      ele_children <- input$ShinyForm_children
                                       ele$remove(input, NS(ns(ele$id)))
-                                      if(str_detect(ele_id, "ShinyForm-Column")) {
-                                        self$layout$column <- filter(self$layout$column,
-                                                                     !(dom %in% .env$ele_id | parent %in% .env$ele_id))
-                                        if(ele_id %in% self$layout$object$parent) {
-                                          self$layout$object <- filter(self$layout$object, !parent %in% .env$ele_id)
-                                        }
-                                      } else {
-                                        self$layout$object <- filter(self$layout$object, !dom %in% .env$ele_id)
-                                      }
+                                      self$layout$objects <- self$layout$objects[!(dom %in% c(.env$ele_id, .env$ele_children)),]
                                       session$sendCustomMessage("unselectShinyForm", list(id = ele_id))
                                     })
                                     
@@ -425,22 +460,21 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       input$Preview_Sortable_Order
                                     })
                                     
-                                    observeEvent(input$Save, {
-                                      tib <- bind_rows(self$layout$column,
-                                                       self$layout$object)
-                                      m <- list(query = glue_collapse(glue("#{tib$dom}"),sep = ","))
+                                    observeEvent({
+                                      input$Save
+                                      input$rm
+                                      }, {
+                                      m <- list(query = glue_collapse(glue("#{self$layout$objects$dom}"),sep = ","))
                                       session$sendCustomMessage("orderElementIDs", m)
-                                    })
+                                    }, priority = 2L)
+                                    
                                     
                                     observe({
                                       req(input$ShinyForm_ele_ordered)
                                       ids_ord <- input$ShinyForm_ele_ordered
-                                      col_ord <- ids_ord[ids_ord %in% self$layout$column$dom]
-                                      self$layout$column <- self$layout$column[sort_by(self$layout$column$dom, col_ord),]
-                                      obj_ord <- ids_ord[ids_ord %in% self$layout$object$dom]
-                                      self$layout$object <- self$layout$object[sort_by(self$layout$object$dom, obj_ord),]
-                                      
-                                    })
+                                      self$layout$objects <- self$layout$objects[sort_by(dom, .env$ids_ord),]
+                                      print(self$layout$objects)
+                                    }, priority = 2L)
                                     
                                     
                                   }
