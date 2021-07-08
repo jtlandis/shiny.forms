@@ -129,6 +129,14 @@ get_ShinyForm_Element <- function(id, ns = NULL){
       console.log(ids);
       Shiny.setInputValue('<children>', ids, {priority: 'event'});
     }
+    Shiny.addCustomMessageHandler('appendParentWithSelected', appendParentWithSelected);
+    function appendParentWithSelected(message) {
+      if(ShinyForm_selected==null) { return ; }
+      let parent = $('#' + message.parent)[0];
+      $(message.selected_query).map((index, ele) => { 
+        parent.appendChild(ele); 
+        });
+    }
     function ShinyColumn(el){
       if (el.classList.contains('ShinyForm-Column')||el.classList.contains('ShinyForm-Preview-Container')) { 
         return el;
@@ -173,54 +181,6 @@ sort_by <- function(x, by){
   order(match(x, by))
 }
 
-ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
-                               inherit = ShinyModule,
-                               public = list(
-                                 inner_id = "ShinyForm-Column",
-                                 initialize = function(id, width){
-                                   super$initialize(id)
-                                   self$width <- width
-                                 },
-                                 width = NULL,
-                                 ui = function(id = self$id){
-                                   ns <- NS(id)
-                                   div(class = ns(glue("{self$inner_id}-Container")),
-                                       column(
-                                         self$width,
-                                         id = ns(self$inner_id),
-                                         `data-rank-id` = paste0(ns(self$inner_id),'-',self$width),
-                                         class = "ShinyForm-Column",
-                                         h3(self$id, class = 'SFC-label', hidden = NA)
-                                       ),
-                                       sortable_js(ns(self$inner_id))
-                                   )
-                                   
-                                 },
-                                 edit = function(id = self$id){
-                                   ns <- NS(id)
-                                   tagList(
-                                     numericInput(ns("width"), label = "New Width", 
-                                                  value = self$width, min = 1, max = 12)
-                                   )
-                                 },
-                                 edit_mod = function(input, output, session){
-                                   ns <- session$ns
-                                   observe({
-                                     req(input$width)
-                                     self$width <- input$width
-                                     updateShinyFormColumn(id = ns("ShinyForm-Column"), width = input$width, session = session)
-                                   })
-                                 },
-                                 remove = function(input, ns = NULL){
-                                   ns <- ns %||% getDefaultReactiveDomain()$ns
-                                   id <- self$inner_id
-                                   removeUI(glue(".shiny-input-container:has(#{ns('width')})"))
-                                   removeUI(glue(".{ns(paste0(id,'-Container'))}:has(#{ns(id)})"))
-                                   if(!is.null(input)){
-                                     remove_shiny_inputs(ns('width'), input)
-                                   }
-                                 }
-                               ))
 
 ShinyLayout <- R6::R6Class("ShinyLayout",
                            public = list(
@@ -276,8 +236,18 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                        status = "primary",
                                                        circle = F, inline = T,
                                                        icon = icon('share-square'),
-                                                       selectInput(ns('parent_select'), "Select New Parent",
-                                                                   choices = c("none"), multiple = F),
+                                                       radioGroupButtons(
+                                                         inputId = ns('parent_select'),
+                                                         status = 'info',
+                                                         label = "Select New Parent",
+                                                         direction = "vertical",
+                                                         choices = c("none"), 
+                                                         selected = c("none"),
+                                                         checkIcon = list(
+                                                           yes = icon("ok"))
+                                                       ),
+                                                       # selectInput(ns('parent_select'), "Select New Parent",
+                                                       #             choices = c("none"), multiple = F),
                                                        actionBttn(ns('mv'), label = 'Move', style = 'material-flat', 
                                                                   block = T, color = 'warning')),
                                         actionButton(ns("Save"), NULL, icon = icon("save"), class = 'btn-primary'),
@@ -362,6 +332,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                            })
                                     
                                     observe({
+                                      isolate({prev_selected <- input$parent_select})
                                       col_objs <- s()$layout$objects[type=='column',][['obj']]
                                       if (length(col_objs)>0){
                                         indexes <- map_chr(col_objs, ~.x$id)
@@ -371,13 +342,20 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       } else {
                                         vals <- c('none' = 'none')
                                       }
-                                      updateSelectInput(session = session,
+                                      selected <-
+                                        if(prev_selected %in% vals){
+                                          prev_selected
+                                        } else {
+                                          'none'
+                                      }
+                                      updateRadioGroupButtons(session = session,
                                                         inputId = 'parent_select',
-                                                        choices = vals, selected = character())
+                                                        choices = vals, 
+                                                        selected = selected)
                                     })
                                     
                                     observeEvent(input$mv, {
-                                      browser()
+                                      selected <- input$ShinyForm_selected_id
                                       parent_num <- input$parent_select
                                       new_parent <- 
                                         if (parent_num=="none"){
@@ -385,6 +363,12 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         } else {
                                           self$layout$objects[map_lgl(obj, ~.x$id==.env$parent_num)&type=='column', dom, drop = T]
                                         }
+                                      objs <- self$layout$objects[dom %in% .env$selected, obj, drop = T]
+                                      selectors <- paste0(map_chr(objs, ~.x$selector(NS(ns(.x$id)))),collapse = ",")
+                                      session$sendCustomMessage("appendParentWithSelected", list(parent = new_parent,
+                                                                                                 selected_query = selectors))
+                                      self$layout$objects[dom==.env$selected,parent] <- new_parent
+                                      print(self$layout$objects)
                                     })
                                     
                                     clicked_element <- reactive({
@@ -411,7 +395,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     })
                                     
                                     observe({
-                                      input$ShinyForm_selected_id
+                                      validate(need(!is.null(input$ShinyForm_selected_id), 'Select Something'))
                                       dom <- s()$layout$objects$dom
                                       m <- list(query = glue_collapse(glue("#{dom}"),sep = ","))
                                       session$sendCustomMessage('findSubElements', m)
@@ -438,6 +422,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         ele$remove(input, NS(ns(ele$id)))
                                         self$layout$objects <- self$layout$objects[!(dom %in% c(.env$ele_id, .env$ele_children)),]
                                         session$sendCustomMessage("unselectShinyForm", list(id = ele_id))
+                                        s()$invalidate()
                                       }
                                     }, priority = 0L)
                                     
@@ -449,11 +434,18 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       ele$remove(input, NS(ns(ele$id)))
                                       self$layout$objects <- self$layout$objects[!(dom %in% c(.env$ele_id, .env$ele_children)),]
                                       session$sendCustomMessage("unselectShinyForm", list(id = ele_id))
+                                      s()$invalidate()
                                     })
                                     
-                                    observeEvent(input$unhide_labels, {
-                                      toggle(selector = 'h3.SFC-label')
-                                    }, ignoreInit = T)
+                                    observe({
+                                      s()
+                                      if(input$unhide_labels){
+                                        shinyjs::show(select = 'h3.SFC-label')
+                                      } else {
+                                        shinyjs::hide(selector = 'h3.SFC-label')
+                                      }
+                                      
+                                    })
                                     
                                     output$View <- renderPrint({
                                       validate(need(input$Preview_Sortable_Order, "Nothing to View"))

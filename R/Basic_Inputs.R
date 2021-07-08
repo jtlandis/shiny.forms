@@ -5,6 +5,10 @@ empty_on_0str <- function(x) {
 R6Input <- R6::R6Class("R6Input",
                        inherit = ShinyModule,
                        public = list(
+                         selector = function(ns = NULL){
+                           ns <- ns %||% getDefaultReactiveDomain()
+                           glue(".shiny-input-container:has(#{ns('user_input')})")
+                         },
                          inner_id = 'user_input',
                          label = NULL,
                          default = NULL,
@@ -38,6 +42,59 @@ R6Input <- R6::R6Class("R6Input",
                          }
                        ))
 
+ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
+                               inherit = R6Input,
+                               public = list(
+                                 selector = function(ns){
+                                   ns <- ns %||% getDefaultReactiveDomain()$ns
+                                   id <- self$inner_id
+                                   glue(".{ns(paste0(id,'-Container'))}:has(#{ns(id)})")
+                                 },
+                                 inner_id = "ShinyForm-Column",
+                                 initialize = function(id, width){
+                                   super$initialize(id)
+                                   self$width <- width
+                                 },
+                                 width = NULL,
+                                 ui = function(id = self$id){
+                                   ns <- NS(id)
+                                   div(class = ns(glue("{self$inner_id}-Container")),
+                                       column(
+                                         self$width,
+                                         id = ns(self$inner_id),
+                                         `data-rank-id` = paste0(ns(self$inner_id),'-',self$width),
+                                         class = "ShinyForm-Column",
+                                         h3(self$id, class = 'SFC-label', hidden = NA)
+                                       ),
+                                       sortable_js(ns(self$inner_id))
+                                   )
+                                   
+                                 },
+                                 edit = function(id = self$id){
+                                   ns <- NS(id)
+                                   tagList(
+                                     numericInput(ns("width"), label = "New Width", 
+                                                  value = self$width, min = 1, max = 12)
+                                   )
+                                 },
+                                 edit_mod = function(input, output, session){
+                                   ns <- session$ns
+                                   observe({
+                                     req(input$width)
+                                     self$width <- input$width
+                                     updateShinyFormColumn(id = ns("ShinyForm-Column"), width = input$width, session = session)
+                                   })
+                                 },
+                                 remove = function(input, ns = NULL){
+                                   ns <- ns %||% getDefaultReactiveDomain()$ns
+                                   removeUI(glue(".shiny-input-container:has(#{ns('width')})"))
+                                   removeUI(self$selector(ns))
+                                   if(!is.null(input)){
+                                     remove_shiny_inputs(ns('width'), input)
+                                   }
+                                 }
+                               ))
+
 R6TextInput <- R6::R6Class("R6TextInput",
                               inherit = R6Input,
                               public = list(
@@ -69,7 +126,7 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                   ns <- ns %||% getDefaultReactiveDomain()$ns
                                   removeUI(glue(".shiny-input-container:has(#{ns('label')})"))
                                   removeUI(glue(".shiny-input-container:has(#{ns('default')})"))
-                                  removeUI(glue(".shiny-input-container:has(#{ns('user_input')})"))
+                                  removeUI(self$selector(ns))
                                   if(!is.null(input)){
                                     remove_shiny_inputs(c(ns('label'),ns('default'), ns('user_input')), input)
                                   }
