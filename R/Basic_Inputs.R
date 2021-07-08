@@ -1,4 +1,7 @@
-
+empty_on_0str <- function(x) {
+  if(!is.null(x)&&(length(x)==0||(is.character(x)&&x==""))) return(character())
+  x
+}
 R6Input <- R6::R6Class("R6Input",
                        inherit = ShinyModule,
                        public = list(
@@ -54,8 +57,8 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                 edit_mod = function(input, output, session){
                                   ns <- session$ns
                                   observe({
-                                    self$label <- input$label
-                                    self$default <- input$default
+                                    self$label <- empty_on_0str(input$label)
+                                    self$default <- empty_on_0str(input$default)
                                     updateTextInput(session = session,
                                                     inputId = "user_input",
                                                     label = self$label, 
