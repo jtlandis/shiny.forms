@@ -20,7 +20,7 @@ ShinyModule <- R6::R6Class("ShinyModule",
                              inner_id = NULL,
                              initialize = function(id){
                                private$reactiveDep <- function(x) NULL
-                               self$id <- id
+                               self$id <- as.character(id)
                              },
                              call = function(){
                                moduleServer(self$id,
@@ -190,7 +190,7 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                          id = ns(self$inner_id),
                                          `data-rank-id` = paste0(ns(self$inner_id),'-',self$width),
                                          class = "ShinyForm-Column",
-                                         h3(str_extract(id,"[0-9]+$"), class = 'SFC-label', hidden = NA)
+                                         h3(self$id, class = 'SFC-label', hidden = NA)
                                        ),
                                        sortable_js(ns(self$inner_id))
                                    )
@@ -226,7 +226,7 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                            public = list(
                              id = NULL,
                              initialize = function(id = NULL){
-                               self$id <- id
+                               self$id <- as.character(id)
                              },
                              objects = tidy_tibble(
                                obj = list(),
@@ -276,7 +276,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                        status = "primary",
                                                        circle = F, inline = T,
                                                        icon = icon('share-square'),
-                                                       selectInput('parent_select', "Select New Parent",
+                                                       selectInput(ns('parent_select'), "Select New Parent",
                                                                    choices = c("none"), multiple = F),
                                                        actionBttn(ns('mv'), label = 'Move', style = 'material-flat', 
                                                                   block = T, color = 'warning')),
@@ -361,6 +361,32 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                              })
                                            })
                                     
+                                    observe({
+                                      col_objs <- s()$layout$objects[type=='column',][['obj']]
+                                      if (length(col_objs)>0){
+                                        indexes <- map_chr(col_objs, ~.x$id)
+                                        opts <- c('none', paste('Column', indexes))
+                                        vals <- c('none', indexes)
+                                        names(vals) <- opts
+                                      } else {
+                                        vals <- c('none' = 'none')
+                                      }
+                                      updateSelectInput(session = session,
+                                                        inputId = 'parent_select',
+                                                        choices = vals, selected = character())
+                                    })
+                                    
+                                    observeEvent(input$mv, {
+                                      browser()
+                                      parent_num <- input$parent_select
+                                      new_parent <- 
+                                        if (parent_num=="none"){
+                                          ns('ShinyForm-Sortable-Container')
+                                        } else {
+                                          self$layout$objects[map_lgl(obj, ~.x$id==.env$parent_num)&type=='column', dom, drop = T]
+                                        }
+                                    })
+                                    
                                     clicked_element <- reactive({
                                       id <- input$ShinyForm_selected_id
                                       if(is.null(id)) return(NULL)
@@ -392,7 +418,6 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     })
                                     
                                     
-                                    continue_remove <- reactiveVal(0L)
                                     observeEvent(input$rm,{
                                       ele_children <- input$ShinyForm_children
                                       if(!is.null(ele_children)){
