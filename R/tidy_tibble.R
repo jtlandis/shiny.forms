@@ -56,7 +56,6 @@ as_tidy_tibble <- function(x) {
   }
   
   if(!missing(j)){
-    j_quo <- enquo(j)
     j <- tidyselect::eval_select(j_quo, x)
   }
   NextMethod("[<-")
