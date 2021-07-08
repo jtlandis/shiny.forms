@@ -189,7 +189,8 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                          self$width,
                                          id = ns(self$inner_id),
                                          `data-rank-id` = paste0(ns(self$inner_id),'-',self$width),
-                                         class = "ShinyForm-Column"
+                                         class = "ShinyForm-Column",
+                                         h3(str_extract(id,"[0-9]+$"), class = 'SFC-label', hidden = NA)
                                        ),
                                        sortable_js(ns(self$inner_id))
                                    )
@@ -279,7 +280,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                                    choices = c("none"), multiple = F),
                                                        actionBttn(ns('mv'), label = 'Move', style = 'material-flat', 
                                                                   block = T, color = 'warning')),
-                                        actionButton(ns("Save"), NULL, icon = icon("save"), class = 'btn-primary')
+                                        actionButton(ns("Save"), NULL, icon = icon("save"), class = 'btn-primary'),
+                                        materialSwitch(ns('unhide_labels'), 'Show Labels', status = 'info', right = T, inline = T)
                                       ),
                                       br(),
                                       fluidRow(class = "ShinyForm-Container",
@@ -423,6 +425,10 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       self$layout$objects <- self$layout$objects[!(dom %in% c(.env$ele_id, .env$ele_children)),]
                                       session$sendCustomMessage("unselectShinyForm", list(id = ele_id))
                                     })
+                                    
+                                    observeEvent(input$unhide_labels, {
+                                      toggle(selector = 'h3.SFC-label')
+                                    }, ignoreInit = T)
                                     
                                     output$View <- renderPrint({
                                       validate(need(input$Preview_Sortable_Order, "Nothing to View"))
