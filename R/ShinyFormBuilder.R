@@ -233,14 +233,6 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                                dom = character(),
                                type = character()
                              ),
-                             column = tidy_tibble(index = integer(),
-                                             col = list(),
-                                             parent = character(),
-                                             dom = character()),
-                             object = tidy_tibble(index = integer(),
-                                             elements = list(),
-                                             parent = character(),
-                                             dom = character()),
                              add_object = function(obj, parent, dom, type){
                                self$objects <- 
                                  bind_rows(self$objects,
@@ -248,40 +240,6 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                                                        parent = parent,
                                                        dom = dom,
                                                        type = type))
-                               invisible(self)
-                             },
-                             push_element = function(ele, index, parent, dom) {
-                               
-                               if(is.null(index)){
-                                 index <- max(self$column$index)
-                               }
-                               self$object <- dplyr::bind_rows(self$object,
-                                                               tidy_tibble(index = index,
-                                                                      elements = list(ele),
-                                                                      parent = parent,
-                                                                      dom = dom))
-                               invisible(self)
-                             },
-                             push_column = function(size, index, parent = NULL, dom = NULL) {
-                               # session <- session %||% getDefaultReactiveDomain() 
-                               # ns <- session$ns %||% NS(self$id)
-                               obj <- ShinyFormColumn$new(index, size)
-                               if(is.null(parent)){
-                                 abort('parent must not be NULL')
-                               } else if(nrow(self$column)==0){
-                                 self$column <- tidy_tibble(index = index,
-                                                       col = list(obj),
-                                                       parent = parent,
-                                                       dom = dom)
-                               } else {
-                                 self$column <- dplyr::bind_rows(
-                                   self$column,
-                                   tidy_tibble(index = index,
-                                          col = list(obj),
-                                          parent = parent,
-                                          dom = dom)
-                                 )
-                               }
                                invisible(self)
                              }
                              
