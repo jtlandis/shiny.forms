@@ -63,12 +63,12 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                  ui = function(id = self$id){
                                    ns <- NS(id)
                                    div(class = ns(glue("{self$inner_id}-Container")),
+                                       h3(self$id, class = 'SFC-label', hidden = NA),
                                        column(
                                          self$width,
                                          id = ns(self$inner_id),
                                          `data-rank-id` = paste0(ns(self$inner_id),'-',self$width),
-                                         class = "ShinyForm-Column",
-                                         h3(self$id, class = 'SFC-label', hidden = NA)
+                                         class = "ShinyForm-Column"
                                        ),
                                        sortable_js(ns(self$inner_id))
                                    )
