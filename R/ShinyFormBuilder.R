@@ -206,6 +206,15 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                              
                            ))
 
+weave_ui <- function(.l, ui){
+  n <- length(.l)
+  l <- vector('list',2*n-1)
+  eve_index <- seq_along(.l)*2
+  l[eve_index] <- .l
+  odd_index <- (eve_index-1L)[-1L]
+  l[odd_index] <- ui
+  return(l)
+}
 ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 inherit = ShinyModule,
                                 public = list(
@@ -222,6 +231,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   ui = function(id = self$id) {
                                     ns <- NS(id)
                                     mods <- lapply(self$modules, function(x){x$ui(ns(x$id))})
+                                    mods <- weave_ui(mods, tagList(div()))
                                     addmenu <- quo(dropdownButton(inputId = ns('AddElement'),
                                                        icon = icon('plus'),
                                                        status = "primary",
@@ -477,6 +487,9 @@ test <- ShinyFormBuilder$new("test_id")
 shinyApp(ui = fluidPage(
   tags$head(
     tags$style(HTML("
+                    .ShinyForm-break {
+                      line-height: 100%;
+                    }
                     .ShinyForm-Preview-Container {
                       padding: 15px;
                     }

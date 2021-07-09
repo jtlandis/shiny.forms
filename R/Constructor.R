@@ -10,7 +10,7 @@ SFConstructor <- R6::R6Class("ShinyFromConstructor",
                              ui = function(id = self$id){
                                ns <- NS(id)
                                tagList(
-                                 actionBttn(ns("init"), self$id, block = T, style = 'minimal', color = 'primary')
+                                 actionButton(ns("init"), self$id, width = '100%', class = "btn-primary")
                                )
                              },
                              call = function(){
