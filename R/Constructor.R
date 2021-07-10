@@ -84,8 +84,8 @@ SFC_TextInput <- R6::R6Class("SFC_TextInput",
                               eval.parent(
                                 quote(
                                   private$R6$new(glue("{self$id}-{private$counter}"),
-                                                 label = input$label,
-                                                 value = input$value)
+                                                 label = empty2null(input$label),
+                                                 value = empty2null(input$value))
                                   )
                                 )
                             }

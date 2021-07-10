@@ -77,8 +77,7 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                  edit = function(id = self$id){
                                    ns <- NS(id)
                                    tagList(
-                                     numericInput(ns("width"), label = "New Width", 
-                                                  value = self$width, min = 1, max = 12)
+                                     sliderInput(ns("width"), label = "New Width:", value = self$width, min = 1L, max = 12L, step = 1L)
                                    )
                                  },
                                  edit_mod = function(input, output, session){

@@ -246,71 +246,30 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                sortable_js(ns("ShinyForm-Sortable-Container")),
                                         column(width = 4,
                                                class = "ShinyForm-Menu-Container",
-                                               tabsetPanel(
-                                                 id = ns('tabset'),
-                                                 tabPanel('Create',
-                                                          selectInput(ns('element-options'), 
-                                                                      "Select An Element",
-                                                                      choices = names(self$modules)),
-                                                          hr(),
-                                                          uiOutput(ns('init_mod'))),
-                                                 tabPanel('Edit',
-                                                          uiOutput(ns("SELECTED"))),
-                                                 tabPanel('Move',
-                                                          checkboxInput(ns('unhide_labels'), 
-                                                                        label = 'Show Column Labels',
-                                                                        value = F),
-                                                          hr(),
-                                                          selectInput(ns('parent_select'),label = "New Parent:",
-                                                                      choices = c('none'='none'), selected = c('none'='none')),
-                                                          hr(),
-                                                          actionButton(ns('mv'), label = "Move!", class = 'btn-warning', align = 'right')),
-                                                 tabPanel('Delete',
-                                                          actionButton(ns('rm'), label = "Remove!", class = 'btn-danger', align = 'center'))
+                                               wellPanel(
+                                                 h3("Create"),
+                                                 selectInput(ns('element-options'), 
+                                                             "Select An Element",
+                                                             choices = names(self$modules)),
+                                                 hr(),
+                                                 uiOutput(ns('init_mod')),
+                                                 hr(),
+                                                 h3("Edit"),
+                                                 uiOutput(ns("SELECTED")),
+                                                 hr(),
+                                                 checkboxInput(ns('unhide_labels'), 
+                                                               label = 'Show Column Labels',
+                                                               value = F),
+                                                 hr(),
+                                                 selectInput(ns('parent_select'),label = "New Parent:",
+                                                             choices = c('none'='none'), selected = c('none'='none')),
+                                                 hr(),
+                                                 actionButton(ns('mv'), label = "Move!", class = 'btn-warning', align = 'right'),
+                                                 actionButton(ns('rm'), label = "Remove!", class = 'btn-danger', align = 'center')
                                                ))
                                       ),
                                       tags$script(HTML(get_ShinyForm_Element("ShinyForm-Sortable-Container", ns)))
                                     )
-                                    # tagList(
-                                    #   useShinyjs(),
-                                    #   fluidRow(
-                                    #     eval_tidy(addmenu),
-                                    #     actionButton(ns("rm"), NULL, icon = icon('minus'), class = 'btn-danger'),
-                                    #     dropdownButton(inputId = ns('MoveElement'),
-                                    #                    status = "primary",
-                                    #                    circle = F, inline = T,
-                                    #                    icon = icon('share-square'),
-                                    #                    radioGroupButtons(
-                                    #                      inputId = ns('parent_select'),
-                                    #                      status = 'info',
-                                    #                      label = "Select New Parent",
-                                    #                      direction = "vertical",
-                                    #                      choices = c("none"), 
-                                    #                      selected = c("none"),
-                                    #                      checkIcon = list(
-                                    #                        yes = icon("ok"))
-                                    #                    ),
-                                    #                    # selectInput(ns('parent_select'), "Select New Parent",
-                                    #                    #             choices = c("none"), multiple = F),
-                                    #                    actionBttn(ns('mv'), label = 'Move', style = 'material-flat', 
-                                    #                               block = T, color = 'warning')),
-                                    #     actionButton(ns("Save"), NULL, icon = icon("save"), class = 'btn-primary'),
-                                    #     materialSwitch(ns('unhide_labels'), 'Show Labels', status = 'info', right = T, inline = T)
-                                    #   ),
-                                    #   br(),
-                                    #   fluidRow(class = "ShinyForm-Container",
-                                    #            column(9,
-                                    #                   fluidRow(
-                                    #                     class = "ShinyForm-Preview-Container",
-                                    #                     id = ns("ShinyForm-Sortable-Container")),
-                                    #                   sortable_js(ns("ShinyForm-Sortable-Container"))),
-                                    #            column(3,
-                                    #                   uiOutput(ns("SELECTED"))
-                                    #            )
-                                    #   ),
-                                    #   verbatimTextOutput(ns("View")),
-                                    #   tags$script(HTML(get_ShinyForm_Element("ShinyForm-Sortable-Container", ns)))
-                                    # )
                                   },
                                   selected_ui = NULL,
                                   selected_col = NULL
@@ -396,7 +355,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         } else {
                                           'none'
                                       }
-                                      updateRadioGroupButtons(session = session,
+                                      updateSelectInput(session = session,
                                                         inputId = 'parent_select',
                                                         choices = vals, 
                                                         selected = selected)
