@@ -73,9 +73,10 @@ remove_shiny_inputs <- function(id, .input) {
     })
   )
 }
-updateShinyFormColumn <- function(id, width = 6L, session){
+updateShinyFormColumn <- function(id, width = 6L, session = getDefaultReactiveDomain()){
+  ns <- session$ns
   m <- list(
-    id = id,
+    id = ns(id),
     width = width
   )
   validate(need(is.integer(width), "`width` must be an Integer"))
@@ -299,10 +300,10 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       selected_id <- input$ShinyForm_selected_id
                                       if(is.null(selected_id)||length(selected_id)==0){
                                         disable('rm')
-                                        disable('MoveElement')
+                                        disable('mv')
                                       } else {
                                         enable('rm')
-                                        enable('MoveElement')
+                                        enable('mv')
                                       }
                                     })
                                     #call each constructor object's module

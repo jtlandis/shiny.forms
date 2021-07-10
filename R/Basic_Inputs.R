@@ -77,7 +77,7 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                  edit = function(id = self$id){
                                    ns <- NS(id)
                                    tagList(
-                                     sliderInput(ns("width"), label = "New Width:", value = self$width, min = 1L, max = 12L, step = 1L)
+                                     sliderInput(ns("width"), label = "New Width:", value = self$width, min = 1L, max = 12L, step = 1L, ticks = F)
                                    )
                                  },
                                  edit_mod = function(input, output, session){
@@ -85,7 +85,7 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                    observe({
                                      req(input$width)
                                      self$width <- input$width
-                                     updateShinyFormColumn(id = ns("ShinyForm-Column"), width = input$width, session = session)
+                                     updateShinyFormColumn(id = "ShinyForm-Column", width = input$width, session = session)
                                    })
                                  },
                                  remove = function(input, ns = NULL){
@@ -123,7 +123,7 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                   ns <- session$ns
                                   observe({
                                     self$label <- empty2null(input$label)
-                                    self$default <- empty_on_0str(input$default)
+                                    self$default <- empty2null(input$default)
                                     updateTextInput(session = session,
                                                     inputId = "user_input",
                                                     label = self$label, 

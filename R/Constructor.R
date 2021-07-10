@@ -50,7 +50,7 @@ SFC_Column <- R6::R6Class("SFC_Column",
                             ui = function(id = self$id){
                               ns <- NS(id)
                               tagList(
-                                sliderInput(ns("width"), label = "Column Width", min = 1L, max = 12L,value = 6L, step = 1L),
+                                sliderInput(ns("width"), label = "Column Width", min = 1L, max = 12L,value = 6L, step = 1L, ticks = F),
                                 actionButton(ns("insert"), "OK", class = "btn-primary")
                               )
                             }
