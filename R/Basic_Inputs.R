@@ -102,6 +102,11 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
 R6TextInput <- R6::R6Class("R6TextInput",
                               inherit = R6Input,
                               public = list(
+                                initialize = function(id, label = NULL, value = NULL){
+                                  super$initialize(id)
+                                  self$label <- label
+                                  self$default <- value
+                                },
                                 ui = function(id = self$id){
                                   ns <- NS(id)
                                   tagList(

@@ -28,53 +28,39 @@ SFConstructor <- R6::R6Class("ShinyFromConstructor",
                                private$counter <- private$counter + 1L
                                invisible(self)
                              },
-                             configure = NULL
+                             server = function(input, output, session){
+                               ns <- session$ns
+                               
+                               val <- reactive({
+                                 input$insert
+                                 private$increment()
+                                 private$make()
+                               })
+                               return(list(value = val, insert = reactive({input$insert})))
+                             },
+                             make = function(env){
+                               eval_tidy(private$R6$new(glue("{private$counter}")), env = env)
+                             }
                            ))
 
 
 SFC_Column <- R6::R6Class("SFC_Column",
                           inherit = SFConstructor,
+                          public = list(
+                            ui = function(id = self$id){
+                              ns <- NS(id)
+                              tagList(
+                                sliderInput(ns("width"), label = "Column Width", min = 1L, max = 12L,value = 6L, step = 1L),
+                                actionButton(ns("insert"), "OK", class = "btn-primary")
+                              )
+                            }
+                          ),
                           private = list(
                             R6 = ShinyFormColumn,
-                            server = function(input, output, session){
-                              ns <- session$ns
-                              
-                              observeEvent(input$init, {
-                                showModal(
-                                  modalDialog(
-                                    fluidRow(
-                                      numericInput(ns("width"), "Column Width", value = 6L, min = 1L, max = 12L)),
-                                    footer = tagList(
-                                      modalButton("Cancel"),
-                                      actionButton(ns("insert"), "OK")
-                                    )
-                                  ))
-                              })
-                              observeEvent(input$insert, {
-                                removeModal()
-                              })
-                              # observeEvent(input$insert, {
-                              #   removeModal()
-                              #   browser()
-                              #   private$increment()
-                              #   obj <- private$R6$new(private$counter, width = input$width)
-                              #   parent <- selected()
-                              #   layout$add_object(obj = obj,
-                              #                     parent = parent,
-                              #                     dom = ns(glue("{private$counter}-ShinyForm-Column")),
-                              #                     type = "column")
-                              #   insertUI(glue("#{parent}"),
-                              #            where = "beforeEnd",
-                              #            ui = obj$ui(ns(obj$id)))
-                              #   obj$call() #insure things that need to be reactive are active
-                              #   print(layout$objects)
-                              # })
-                              val <- reactive({
-                                input$insert
-                                private$increment()
-                                private$R6$new(glue("{private$counter}"), width = isolate(input$width))
-                              })
-                              return(list(value = val, insert = reactive({input$insert}), clicked = reactive({input$init})))
+                            make = function(){
+                              eval.parent(
+                                quote(private$R6$new(glue("{private$counter}"), width = input$width))
+                              )
                             }
                           ))
 
@@ -82,17 +68,26 @@ SFC_Column <- R6::R6Class("SFC_Column",
 
 SFC_TextInput <- R6::R6Class("SFC_TextInput",
                           inherit = SFConstructor,
+                          public = list(
+                            ui = function(id = self$id){
+                              ns <- NS(id)
+                              tagList(
+                                textInput(ns('label'), label = 'Field Label:', value = NULL),
+                                textInput(ns('default'), label = 'Default Value:', value = NULL),
+                                actionButton(ns("insert"), "OK", class = "btn-primary")
+                              )
+                            }
+                          ),
                           private = list(
                             R6 = R6TextInput,
-                            server = function(input, output, session){
-                              ns <- session$ns
-                              
-                              val <- reactive({
-                                input$init
-                                private$increment()
-                                private$R6$new(glue("{self$id}-{private$counter}"))
-                              })
-                              return(list(value = val, insert = reactive(input$init), clicked = reactive({input$init})))
+                            make = function(){
+                              eval.parent(
+                                quote(
+                                  private$R6$new(glue("{self$id}-{private$counter}"),
+                                                 label = input$label,
+                                                 value = input$value)
+                                  )
+                                )
                             }
                           ))
 
