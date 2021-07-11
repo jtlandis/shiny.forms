@@ -34,12 +34,14 @@ SFConstructor <- R6::R6Class("ShinyFromConstructor",
                                val <- reactive({
                                  input$insert
                                  private$increment()
+                                 private$update()
                                  private$make()
                                })
                                return(list(value = val, insert = reactive({input$insert})))
                              },
-                             make = function(env){
-                               eval_tidy(private$R6$new(glue("{private$counter}")), env = env)
+                             update = function(){},
+                             make = function(){
+                               eval.parent(quote(private$R6$new(glue("{private$counter}"))))
                              }
                            ))
 
@@ -50,16 +52,22 @@ SFC_Column <- R6::R6Class("SFC_Column",
                             ui = function(id = self$id){
                               ns <- NS(id)
                               tagList(
-                                sliderInput(ns("width"), label = "Column Width", min = 1L, max = 12L,value = 6L, step = 1L, ticks = F),
+                                sliderInput(ns("width"), label = "Column Width", min = 1L, max = 12L,value = self$width, step = 1L, ticks = F),
                                 actionButton(ns("insert"), "OK", class = "btn-primary")
                               )
-                            }
+                            },
+                            width = 6L
                           ),
                           private = list(
                             R6 = ShinyFormColumn,
+                            update = function(){
+                              eval.parent(quote({
+                                self$width <- input$width
+                              }))
+                            },
                             make = function(){
                               eval.parent(
-                                quote(private$R6$new(glue("{private$counter}"), width = input$width))
+                                quote(private$R6$new(glue("{private$counter}"), width = self$width))
                               )
                             }
                           ))
@@ -72,20 +80,30 @@ SFC_TextInput <- R6::R6Class("SFC_TextInput",
                             ui = function(id = self$id){
                               ns <- NS(id)
                               tagList(
-                                textInput(ns('label'), label = 'Field Label:', value = NULL),
-                                textInput(ns('default'), label = 'Default Value:', value = NULL),
+                                textInput(ns('label'), label = 'Field Label:', value = self$label),
+                                textInput(ns('default'), label = 'Default Value:', value = self$default),
                                 actionButton(ns("insert"), "OK", class = "btn-primary")
                               )
-                            }
+                            },
+                            label = NULL,
+                            default = NULL
                           ),
                           private = list(
                             R6 = R6TextInput,
+                            update = function(){
+                              eval.parent(
+                                quote({
+                                  self$label <- empty2null(input$label)
+                                  self$default <- empty2null(input$default)
+                                })
+                              )
+                            },
                             make = function(){
                               eval.parent(
                                 quote(
                                   private$R6$new(glue("{self$id}-{private$counter}"),
-                                                 label = empty2null(input$label),
-                                                 value = empty2null(input$value))
+                                                 label = self$label,
+                                                 default = self$default)
                                   )
                                 )
                             }

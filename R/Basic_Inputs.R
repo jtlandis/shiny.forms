@@ -101,10 +101,10 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
 R6TextInput <- R6::R6Class("R6TextInput",
                               inherit = R6Input,
                               public = list(
-                                initialize = function(id, label = NULL, value = NULL){
+                                initialize = function(id, label = NULL, default = NULL){
                                   super$initialize(id)
                                   self$label <- label
-                                  self$default <- value
+                                  self$default <- default
                                 },
                                 ui = function(id = self$id){
                                   ns <- NS(id)
@@ -122,8 +122,9 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                 edit_mod = function(input, output, session){
                                   ns <- session$ns
                                   observe({
+                                    req(input$label, input$default)
                                     self$label <- empty2null(input$label)
-                                    self$default <- empty2null(input$default)
+                                    self$default <- empty_on_0str(input$default)
                                     updateTextInput(session = session,
                                                     inputId = "user_input",
                                                     label = self$label, 
