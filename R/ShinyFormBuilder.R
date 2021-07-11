@@ -285,7 +285,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     ns <- session$ns
                                     s <- self$reactive()
                                     disable('rm')
-                                    disable('MoveElement')
+                                    disable('mv')
                                     parent_id <- reactive({
                                       selected_id <- input$ShinyForm_selected_id
                                       objects <- self$layout$objects
@@ -300,6 +300,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         return(objects[dom %in% .env$selected_id,]$parent)
                                       }
                                     })
+                                    
+                                    
                                     
                                     observe({
                                       selected_id <- input$ShinyForm_selected_id
