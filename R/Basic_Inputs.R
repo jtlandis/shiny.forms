@@ -52,7 +52,7 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                  selector = function(ns){
                                    ns <- ns %||% getDefaultReactiveDomain()$ns
                                    id <- self$inner_id
-                                   glue(".{ns(paste0(id,'-Container'))}:has(#{ns(id)})")
+                                   glue("#{ns(paste0(id,'-Container'))}:has(#{ns(id)})")
                                  },
                                  inner_id = "ShinyForm-Column",
                                  initialize = function(id, width){
@@ -62,7 +62,8 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                  width = NULL,
                                  ui = function(id = self$id){
                                    ns <- NS(id)
-                                   div(class = ns(glue("{self$inner_id}-Container")),
+                                   div(id = ns(glue("{self$inner_id}-Container")),
+                                       class = "ShinyForm-Column-Container",
                                        h3(self$id, class = 'SFC-label', hidden = NA),
                                        column(
                                          self$width,
