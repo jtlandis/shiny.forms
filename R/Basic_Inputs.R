@@ -123,7 +123,10 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                 edit_mod = function(input, output, session){
                                   ns <- session$ns
                                   observe({
-                                    req(input$label, input$default)
+                                    validate(
+                                      need(!is.null(input$label)|!is.null(input$default),
+                                           "Nothing has been Edited")
+                                      )
                                     self$label <- empty2null(input$label)
                                     self$default <- empty_on_0str(input$default)
                                     updateTextInput(session = session,
