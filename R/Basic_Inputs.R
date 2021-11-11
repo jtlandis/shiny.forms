@@ -21,7 +21,7 @@ R6Input <- R6::R6Class("R6Input",
                            self$label <- label 
                            self$default <- default
                          },
-                         ui = function(id = self$id) {
+                         ui = function(id = self$id, preview = TRUE) {
                            stop("Cannot use R6Input `$ui`")
                          },
                          edit = function(id = self$id) {
@@ -30,12 +30,24 @@ R6Input <- R6::R6Class("R6Input",
                          edit_mod = function(input, output, session) {
                            stop("Cannot use R6Input `$edit_mod`")
                          },
+                         get_call = function() {
+                           stop("Cannot use R6Input `$get_call`")
+                         },
                          preview = function(){
                            div(class = ifelse(self$selected,
                                               "ShinyForm-Element ShinyForm_selected",
                                               "ShinyForm-Element"), 
                                `data-rank-id` = self$id,
                                self$ui())
+                         },
+                         print = function(){
+                           fields <- formals(self$initialize) 
+                           fields <- map(setNames(nm = names(fields)), ~ self[[.x]])
+                           cat("<", class(self)[1L], ">\n", sep = "")
+                           names <- paste0(" * ", format(names(fields), justify = "right"), " : ")
+                           values <- format(map_chr(fields, format), justify = "left")
+                           cat(paste(names, values, collapse = "\n"))
+                           return(invisible(self))
                          }
                        ),
                        private = list(
@@ -73,7 +85,6 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                        ),
                                        sortable_js(ns(self$inner_id))
                                    )
-                                   
                                  },
                                  edit = function(id = self$id){
                                    ns <- NS(id)
@@ -96,6 +107,10 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                    if(!is.null(input)){
                                      remove_shiny_inputs(ns('width'), input)
                                    }
+                                 },
+                                 get_call = function() {
+                                   ns <- NS(self$id)
+                                   call("column", width = self$width, id = ns(self$inner_id))
                                  }
                                ))
 
@@ -112,6 +127,10 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                   tagList(
                                     textInput(ns("user_input"), label = self$label, value = self$default)
                                   )
+                                },
+                                get_call = function() {
+                                  ns <- NS(self$id)
+                                  call("textInput",inputId = ns("user_input"), label = self$label, value = self$default)
                                 },
                                 edit = function(id = self$id){
                                   ns <- NS(id)

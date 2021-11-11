@@ -223,6 +223,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   modules = NULL,
                                   initialize = function(id){
                                     super$initialize(id)
+                                    private$.tmp <- tempfile("ShinyForm", fileext = ".rds")
                                     self$layout <- ShinyLayout$new(id = id)
                                     self$modules <- list(
                                       column = SFC_Column$new('column'),
@@ -271,7 +272,9 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                             actionButton(ns('mv'), label = "Move!", class = 'btn-warning', align = 'right'),
                                                             actionButton(ns('rm'), label = "Remove!", class = 'btn-danger', align = 'center')
                                                             )
-                                                 )
+                                                 ), 
+                                                 br(),
+                                                 actionButton(ns('Save'), label = "Save", class = "btn-primary", align = 'center')
                                                ))
                                       ),
                                       tags$script(HTML(get_ShinyForm_Element("ShinyForm-Sortable-Container", ns)))
@@ -281,6 +284,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   selected_col = NULL
                                 ),
                                 private = list(
+                                  .static_mods = NULL,
+                                  .tmp = NULL,
                                   server = function(input, output, session){
                                     ns <- session$ns
                                     s <- self$reactive()
@@ -467,20 +472,28 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       input$Preview_Sortable_Order
                                     })
                                     
-                                    observeEvent({
-                                      input$Save
-                                      input$rm
-                                      }, {
-                                      m <- list(query = glue_collapse(glue("#{self$layout$objects$dom}"),sep = ","))
-                                      session$sendCustomMessage("orderElementIDs", m)
-                                    }, priority = 2L)
+                                    init_query <- function() {
+                                      # browser()
+                                      session$sendCustomMessage(
+                                        "orderElementIDs",
+                                        list(query = glue_collapse(glue("#{self$layout$objects$dom}"),sep = ","))
+                                      )
+                                    }
                                     
+                                    observeEvent(input$Save, init_query(), priority = 2L)
+                                    observeEvent(input$rm, init_query(), priority = 2L)
+
                                     
                                     observe({
                                       req(input$ShinyForm_ele_ordered)
                                       ids_ord <- input$ShinyForm_ele_ordered
                                       self$layout$objects <- self$layout$objects[sort_by(dom, .env$ids_ord),]
                                       print(self$layout$objects)
+                                      .tbl <- self$layout$objects
+                                      .tbl$parent <- str_remove(.tbl$parent, ns(""))
+                                      .tbl$dom <- str_remove(.tbl$dom, ns(""))
+                                      saveRDS(.tbl, private$.tmp)
+                                      cat(glue("updating: {private$.tmp}"))
                                     }, priority = 2L)
                                     
                                     
@@ -528,12 +541,18 @@ shinyApp(ui = fluidPage(
                     }*/
                     "))
   ),
-  test$ui()), function(input, output, session){
+  test$ui(),
+  actionButton(".browse", "Browse")), function(input, output, session){
   
   p <- test$reactive()
   
   test$call()
   
+  observeEvent(input$.browse, {
+    browser()
+    
+    return(NULL)
+  })
 })
 
 
