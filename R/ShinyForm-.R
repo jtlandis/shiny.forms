@@ -1,5 +1,28 @@
 
 
+ShinyLayout <- R6::R6Class("ShinyLayout",
+                           public = list(
+                             id = NULL,
+                             initialize = function(id = NULL){
+                               self$id <- as.character(id)
+                             },
+                             objects = tidy_tibble(
+                               obj = list(),
+                               parent = character(),
+                               dom = character(),
+                               type = character()
+                             ),
+                             add_object = function(obj, parent, dom, type){
+                               self$objects <-
+                                 bind_rows(self$objects,
+                                           tidy_tibble(obj = list(obj),
+                                                       parent = parent,
+                                                       dom = dom,
+                                                       type = type))
+                               invisible(self)
+                             }
+                           ))
+
 #takes a layout and builds it
 ShinyForm <- R6::R6Class(
   "ShinyForm",
@@ -27,11 +50,11 @@ generate_call <- function(target, layout, ns = NULL) {
     .obj <- layout[row_i, obj, drop = TRUE][[1L]]
     return(.obj$get_call(ns(.obj$id)))
   }
-  
+
   .obj <- layout$obj[[which(row_i)]]
   target_call <- .obj$get_call(ns(.obj))
   prnts <- layout$parent == target
-  
+
   if (any(prnts)) {
     call_modify(target_call, !!!map(layout$dom[prnts], generate_call, layout = layout, ns = ns))
   } else {
