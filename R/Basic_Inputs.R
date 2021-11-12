@@ -1,11 +1,4 @@
-empty_on_0str <- function(x) {
-  if(is.null(x)&&(length(x)==0||(is.character(x)&&x==""))) return(character())
-  x
-}
-empty2null <- function(x){
-  if(is.character(x)&&x=="") return(NULL)
-  x
-}
+
 R6Input <- R6::R6Class("R6Input",
                        inherit = ShinyModule,
                        public = list(
@@ -18,7 +11,7 @@ R6Input <- R6::R6Class("R6Input",
                          default = NULL,
                          initialize = function(id, label = NULL, default = NULL){
                            super$initialize(id)
-                           self$label <- label 
+                           self$label <- label
                            self$default <- default
                          },
                          ui = function(id = self$id) {
@@ -36,12 +29,12 @@ R6Input <- R6::R6Class("R6Input",
                          preview = function(){
                            div(class = ifelse(self$selected,
                                               "ShinyForm-Element ShinyForm_selected",
-                                              "ShinyForm-Element"), 
+                                              "ShinyForm-Element"),
                                `data-rank-id` = self$id,
                                self$ui())
                          },
                          print = function(){
-                           fields <- formals(self$initialize) 
+                           fields <- formals(self$initialize)
                            fields <- map(setNames(nm = names(fields)), ~ self[[.x]])
                            cat("<", class(self)[1L], ">\n", sep = "")
                            names <- paste0(" * ", format(names(fields), justify = "right"), " : ")
@@ -144,7 +137,7 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                     self$default <- empty_on_0str(input$default)
                                     updateTextInput(session = session,
                                                     inputId = "user_input",
-                                                    label = self$label, 
+                                                    label = self$label,
                                                     value = self$default)
                                     if(is.null(self$label)){
                                       addClass(id = 'user_input-label', 'shiny-label-null')

@@ -33,6 +33,17 @@ map2 <- function(.x, .y, .f, ...) {
   ans
 }
 
+pmap <- function(.l, .f, ...) {
+  .f <- as_function(.f)
+  MoreArgs <- list(...)
+  ans <- .Internal(mapply(.f, .l, MoreArgs))
+  if (is.null(names1 <- names(dots[[1L]])) && is.character(dots[[1L]]))
+    names(ans) <- dots[[1L]]
+  else if (!is.null(names1))
+    names(ans) <- names1
+  ans
+}
+
 map2_impl <- function(.x, .y, .f, ..., .ptype) {
   out <- map2(.x, .y, .f, ...)
   out <- unlist(out, recursive = F)

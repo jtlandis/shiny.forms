@@ -11,176 +11,10 @@ library(stringr)
 library(rlang)
 library(here)
 library(glue)
-ShinyModule <- R6::R6Class("ShinyModule",
-                           public = list(
-                             #' ID that is assigned by the user.
-                             id = NULL,
-                             #' An ID that is used within `$ui` that is
-                             #' may be of some care for the user.
-                             inner_id = NULL,
-                             initialize = function(id){
-                               private$reactiveDep <- function(x) NULL
-                               self$id <- as.character(id)
-                             },
-                             call = function(){
-                               moduleServer(self$id,
-                                            private$server)
-                             },
-                             ui = function(id = self$id){
-                               ns <- NS(id)
-                               tagList()
-                             },
-                             remove = function(input, session){
-                               abort("ShinyModule `$remove` called. Did you mean to make your own method?")
-                             },
-                             reactive = function() {
-                               if(is.null(private$reactiveExpr)) {
-                                 private$reactiveDep <- reactiveVal(0L)
-                                 private$reactiveExpr <- reactive({
-                                   private$reactiveDep()
-                                   self
-                                 })
-                               }
-                               private$reactiveExpr
-                             },
-                             invalidate = function(){
-                               private$count <- private$count + 1L
-                               cat("ReactiveDep:", private$count, "\n")
-                               private$reactiveDep(private$count)
-                               invisible()
-                             }
-                           ),
-                           private = list(
-                             server = function(input, output, session){
-                               abort("ShinyModule `$server` called. Did you mean to make your own method?")
-                             },
-                             reactiveDep = NULL,
-                             reactiveExpr = NULL,
-                             count = 0L
-                           ))
+
 source(here("R/Basic_Inputs.R"))
 source(here("R/tidy_tibble.R"))
 source(here("R/Constructor.R"))
-"%||%" <- function(a,b) if(is.null(a)) b else a
-remove_shiny_inputs <- function(id, .input) {
-  impl <- .subset2(.input, "impl")
-  lgl <- id %in% impl$.values$keys()
-  if(any(!lgl)) warn(glue("The following `id`s were not found in shiny server input and cannot be removed : ", glue_collapse(id[!lgl]), sep = ", ", last = ", and "))
-  to_rm <- id[lgl]
-  invisible(
-    lapply(to_rm, function(i) {
-      impl$.values$remove(i)
-    })
-  )
-}
-updateShinyFormColumn <- function(id, width = 6L, session = getDefaultReactiveDomain()){
-  ns <- session$ns
-  m <- list(
-    id = ns(id),
-    width = width
-  )
-  validate(need(is.integer(width), "`width` must be an Integer"))
-  session$sendCustomMessage("updateShinyFormColumn", m)
-}
-get_ShinyForm_Element <- function(id, ns = NULL){
-  selected <- "ShinyForm_selected_id"
-  dom <- "ShinyForm_ele_ordered"
-  children <- "ShinyForm_children"
-  if(!is.null(ns)){
-    id <- ns(id)
-    selected <- ns(selected)
-    dom <- ns(dom)
-    children <- ns(children)
-  }
-  glue::glue(
-    .open = "<", .close = ">", .sep = "\n",
-    "
-    Shiny.addCustomMessageHandler('orderElementIDs', orderElementIDs)
-    function orderElementIDs(message) {
-      let ids = [];
-      $(message.query).map((index,ele) =>{
-        ids.push(ele.id);
-        });
-      Shiny.setInputValue('<dom>', ids, {priority: 'event'});
-    }
-    Shiny.addCustomMessageHandler('updateShinyFormColumn', updateShinyFormColumn);
-    function updateShinyFormColumn(message) {
-      let col = $('#' + message.id);
-      if(col.length !=0){
-        col = col[0];
-        col.className = col.className.replace(/(col-..-)([0-9]+)/, '$1' + message.width);
-      }
-    }
-    var ShinyForm_selected = null;
-    Shiny.addCustomMessageHandler('unselectShinyForm', setShinyFormNull);
-    function setShinyFormNull(message) {
-      ShinyForm_selected = null;
-      Shiny.setInputValue('<selected>', null, {priority: 'event'})
-    }
-    Shiny.addCustomMessageHandler('findSubElements', findSubElements)
-    function findSubElements(message) {
-      if(ShinyForm_selected==null) {
-        Shiny.setInputValue('<children>', null, {priority: 'event'}) ;
-        return ;
-      } 
-      let ids = [];
-      $('.ShinyForm-selected').find(message.query).map((index, ele) => {
-        ids.push(ele.id); 
-        });
-      console.log(ids);
-      Shiny.setInputValue('<children>', ids, {priority: 'event'});
-    }
-    Shiny.addCustomMessageHandler('appendParentWithSelected', appendParentWithSelected);
-    function appendParentWithSelected(message) {
-      if(ShinyForm_selected==null) { return ; }
-      let parent = $('#' + message.parent)[0];
-      $(message.selected_query).map((index, ele) => { 
-        parent.appendChild(ele); 
-        });
-    }
-    function ShinyColumn(el){
-      if (el.classList.contains('ShinyForm-Column')||el.classList.contains('ShinyForm-Preview-Container')) { 
-        return el;
-      }
-      while(el && el.parentNode) {
-        el = el.parentNode;
-        if(el.classList.contains('ShinyForm-Column')||el.classList.contains('ShinyForm-Preview-Container')) {
-          return el;
-        }
-      }
-      return null;
-    }
-    
-    $('#<id>').on('click', function(e){ // clicked in the container we care about
-      
-      if(e.target.id.length == 0) { return } // if no id -- return
-      if(e.target.id == '<id>') { return } // if target is same as container -- return
-      let shinyCol = ShinyColumn(e.target); // store the closest ShinyForm-Column node
-     // if (shinyCol.childElementCount != 0 && e.target.id != shinyCol.id) { //if what we clicked is not the same as the container
-          if(ShinyForm_selected == null) { // if unselected
-            ShinyForm_selected = e.target;
-            ShinyForm_selected.classList.add('ShinyForm-selected');
-            Shiny.setInputValue('<selected>', ShinyForm_selected.id, {priority: 'event'});
-          } else { // if an element/column is already selected
-            ShinyForm_selected.classList.remove('ShinyForm-selected');
-            if(ShinyForm_selected.id == e.target.id) {
-              ShinyForm_selected = null;
-              Shiny.setInputValue('<selected>', null, {priority: 'event'}); // tell shiny we deselected
-            } else {
-              ShinyForm_selected = e.target;
-              ShinyForm_selected.classList.add('ShinyForm-selected');
-              Shiny.setInputValue('<selected>', ShinyForm_selected.id, {priority: 'event'});
-            }
-          }
-          return ;
-     // }
-      
-    })
-    ")}
-
-sort_by <- function(x, by){
-  order(match(x, by))
-}
 
 
 ShinyLayout <- R6::R6Class("ShinyLayout",
@@ -196,7 +30,7 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                                type = character()
                              ),
                              add_object = function(obj, parent, dom, type){
-                               self$objects <- 
+                               self$objects <-
                                  bind_rows(self$objects,
                                            tidy_tibble(obj = list(obj),
                                                        parent = parent,
@@ -204,7 +38,7 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                                                        type = type))
                                invisible(self)
                              }
-                             
+
                            ))
 
 weave_ui <- function(.l, ui){
@@ -252,7 +86,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                  tabsetPanel(type = 'pills',
                                                    tabPanel("Create",
                                                             br(),
-                                                            selectInput(ns('element-options'), 
+                                                            selectInput(ns('element-options'),
                                                                         "Select An Element",
                                                                         choices = names(self$modules)),
                                                             hr(),
@@ -262,7 +96,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                             br(),
                                                             uiOutput(ns("SELECTED")),
                                                             hr(),
-                                                            checkboxInput(ns('unhide_labels'), 
+                                                            checkboxInput(ns('unhide_labels'),
                                                                           label = 'Show Column Labels',
                                                                           value = F),
                                                             hr(),
@@ -272,7 +106,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                             actionButton(ns('mv'), label = "Move!", class = 'btn-warning', align = 'right'),
                                                             actionButton(ns('rm'), label = "Remove!", class = 'btn-danger', align = 'center')
                                                             )
-                                                 ), 
+                                                 ),
                                                  br(),
                                                  actionButton(ns('Save'), label = "Save", class = "btn-primary", align = 'center')
                                                ))
@@ -305,9 +139,9 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         return(objects[dom %in% .env$selected_id,]$parent)
                                       }
                                     })
-                                    
-                                    
-                                    
+
+
+
                                     observe({
                                       selected_id <- input$ShinyForm_selected_id
                                       if(is.null(selected_id)||length(selected_id)==0){
@@ -350,7 +184,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                s()$invalidate()
                                              })
                                            })
-                                    
+
                                     observe({
                                       isolate({prev_selected <- input$parent_select})
                                       col_objs <- s()$layout$objects[type=='column',][['obj']]
@@ -370,14 +204,14 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       }
                                       updateSelectInput(session = session,
                                                         inputId = 'parent_select',
-                                                        choices = vals, 
+                                                        choices = vals,
                                                         selected = selected)
                                     })
-                                    
+
                                     observeEvent(input$mv, {
                                       selected <- input$ShinyForm_selected_id
                                       parent_num <- input$parent_select
-                                      new_parent <- 
+                                      new_parent <-
                                         if (parent_num=="none"){
                                           ns('ShinyForm-Sortable-Container')
                                         } else {
@@ -390,7 +224,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       self$layout$objects[dom==.env$selected,parent] <- new_parent
                                       print(self$layout$objects)
                                     })
-                                    
+
                                     clicked_element <- reactive({
                                       id <- input$ShinyForm_selected_id
                                       if(is.null(id)) return(NULL)
@@ -398,14 +232,14 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       validate(need(length(res)==1, "There was a problem with `clicked_element`"))
                                       res[[1L]]
                                     })
-                                    
-                                    
-                                    
+
+
+
                                     observeEvent(input$Layout, {
-                                      
+
                                     })
-                                    
-                                    
+
+
                                     output$SELECTED <- renderUI({
                                       ele <- clicked_element()
                                       validate(need(!is.null(ele), "No UI provided"))
@@ -413,15 +247,15 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         ele$edit(ns(ele$id))
                                       )
                                     })
-                                    
+
                                     observe({
                                       validate(need(!is.null(input$ShinyForm_selected_id), 'Select Something'))
                                       dom <- s()$layout$objects$dom
                                       m <- list(query = glue_collapse(glue("#{dom}"),sep = ","))
                                       session$sendCustomMessage('findSubElements', m)
                                     })
-                                    
-                                    
+
+
                                     observeEvent(input$rm,{
                                       ele_children <- input$ShinyForm_children
                                       if(!is.null(ele_children)){
@@ -445,7 +279,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         s()$invalidate()
                                       }
                                     }, priority = 0L)
-                                    
+
                                     observeEvent(input$removeThis,{
                                       removeModal()
                                       ele <- clicked_element()
@@ -456,7 +290,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       session$sendCustomMessage("unselectShinyForm", list(id = ele_id))
                                       s()$invalidate()
                                     })
-                                    
+
                                     observe({
                                       s()
                                       if(input$unhide_labels){
@@ -464,14 +298,14 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       } else {
                                         shinyjs::hide(selector = 'h3.SFC-label')
                                       }
-                                      
+
                                     })
-                                    
+
                                     output$View <- renderPrint({
                                       validate(need(input$Preview_Sortable_Order, "Nothing to View"))
                                       input$Preview_Sortable_Order
                                     })
-                                    
+
                                     init_query <- function() {
                                       # browser()
                                       session$sendCustomMessage(
@@ -479,11 +313,11 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         list(query = glue_collapse(glue("#{self$layout$objects$dom}"),sep = ","))
                                       )
                                     }
-                                    
+
                                     observeEvent(input$Save, init_query(), priority = 2L)
                                     observeEvent(input$rm, init_query(), priority = 2L)
 
-                                    
+
                                     observe({
                                       req(input$ShinyForm_ele_ordered)
                                       ids_ord <- input$ShinyForm_ele_ordered
@@ -495,8 +329,8 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       saveRDS(.tbl, private$.tmp)
                                       cat(glue("updating: {private$.tmp}"))
                                     }, priority = 2L)
-                                    
-                                    
+
+
                                   }
                                 ))
 
@@ -529,7 +363,7 @@ shinyApp(ui = fluidPage(
                       padding: 25px;
                       border-radius: 15px;
                     }
-                    .ShinyForm-selected, 
+                    .ShinyForm-selected,
                     .ShinyForm-Element.ShinyForm-selected,
                     .ShinyForm-Column.ShinyForm-selected {
                       border: 5px solid red;
@@ -543,14 +377,14 @@ shinyApp(ui = fluidPage(
   ),
   test$ui(),
   actionButton(".browse", "Browse")), function(input, output, session){
-  
+
   p <- test$reactive()
-  
+
   test$call()
-  
+
   observeEvent(input$.browse, {
     browser()
-    
+
     return(NULL)
   })
 })
