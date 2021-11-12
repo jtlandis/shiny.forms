@@ -1,45 +1,23 @@
-library(shiny)
-library(R6)
-library(purrr)
-library(sortable)
-library(shinyWidgets)
-library(shinyjs)
-library(tidyr)
-library(dplyr)
-library(tibble)
-library(stringr)
-library(rlang)
-library(here)
-library(glue)
+# library(shiny)
+# library(R6)
+# library(purrr)
+# library(sortable)
+# library(shinyWidgets)
+# library(shinyjs)
+# library(tidyr)
+# library(dplyr)
+# library(tibble)
+# library(stringr)
+# library(rlang)
+# library(here)
+# library(glue)
+#
+# source(here("R/Basic_Inputs.R"))
+# source(here("R/tidy_tibble.R"))
+# source(here("R/Constructor.R"))
+#
 
-source(here("R/Basic_Inputs.R"))
-source(here("R/tidy_tibble.R"))
-source(here("R/Constructor.R"))
 
-
-ShinyLayout <- R6::R6Class("ShinyLayout",
-                           public = list(
-                             id = NULL,
-                             initialize = function(id = NULL){
-                               self$id <- as.character(id)
-                             },
-                             objects = tidy_tibble(
-                               obj = list(),
-                               parent = character(),
-                               dom = character(),
-                               type = character()
-                             ),
-                             add_object = function(obj, parent, dom, type){
-                               self$objects <-
-                                 bind_rows(self$objects,
-                                           tidy_tibble(obj = list(obj),
-                                                       parent = parent,
-                                                       dom = dom,
-                                                       type = type))
-                               invisible(self)
-                             }
-
-                           ))
 
 weave_ui <- function(.l, ui){
   n <- length(.l)
@@ -335,59 +313,6 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 ))
 
 
-test <- ShinyFormBuilder$new("test_id")
-shinyApp(ui = fluidPage(
-  tags$head(
-    tags$style(HTML("
-                    .ShinyForm-break {
-                      line-height: 100%;
-                    }
-                    .ShinyForm-Preview-Container {
-                      padding: 15px;
-                    }
-                    .ShinyForm-Container {
-                      padding: 10px;
-                    }
-                    .ShinyForm-Menu {
-                      padding: 5px;
-                    }
-                    /*.ShinyForm-Element:hover {
-                      background-color: #7682FF;
-                      opacity: .5;
-                    }*/
-                    .ShinyForm-Element-selected {
-                      border: 2px dotted grey;
-                    }
-                    .ShinyForm-Column {
-                      border: .5px solid grey;
-                      padding: 25px;
-                      border-radius: 15px;
-                    }
-                    .ShinyForm-selected,
-                    .ShinyForm-Element.ShinyForm-selected,
-                    .ShinyForm-Column.ShinyForm-selected {
-                      border: 5px solid red;
-                      opacity: .5;
-                    }
-                    /*.ShinyForm-Column-selected:hover {
-                      background-color: #FF7676;
-                      opacity: .5;
-                    }*/
-                    "))
-  ),
-  test$ui(),
-  actionButton(".browse", "Browse")), function(input, output, session){
-
-  p <- test$reactive()
-
-  test$call()
-
-  observeEvent(input$.browse, {
-    browser()
-
-    return(NULL)
-  })
-})
 
 #/tmp/RtmppCF8wH/ShinyForm22dab4052a7d.rds
 
