@@ -1,0 +1,27 @@
+Package: shiny.forms
+Title: Generate Forms From Shiny
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Justin",
+           family = "Landis",
+           role = c("aut", "cre"),
+           email = "jtlandis314@gmail.com",
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: Allows the user to generate and customize form UIs through shiny.
+License: MIT + file LICENSE
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports: 
+    R6,
+    sortable,
+    shiny,
+    shinyjs,
+    tidyselect,
+    rlang,
+    here,
+    glue

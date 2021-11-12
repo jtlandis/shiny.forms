@@ -11,7 +11,7 @@ Timer <- R6::R6Class("Timer",
                      private = list(
                        .ui = function(){
                          ns <- NS(self$id)
-                         
+
                          tagList(
                            fluidRow(
                              actionButton(ns("gettime"), "click me"),
@@ -20,14 +20,16 @@ Timer <- R6::R6Class("Timer",
                          )
                        },
                        server = function(input, output, session){
-                         
+
                          s <- self$reactive()
-                         
+
                          observeEvent(input$gettime,{
+                           #Store a normal value
                            self$timestamp <- Sys.time()
+                           #indicate that something has changed
                            self$invalidate()
                          })
-                         
+
                          output$texttime <- renderText(as.character(s()$timestamp))
                        }
                      ))
@@ -38,13 +40,4 @@ shinyApp(time$ui, function(input, output, session){
   time$call()
 })
 
-
-insertColumnUI <- function(id, input, output, session){
-  moduleServer(
-    id,
-    function(input, output, session){
-      
-    }
-  )
-}
 

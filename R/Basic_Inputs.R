@@ -21,8 +21,8 @@ R6Input <- R6::R6Class("R6Input",
                            self$label <- label 
                            self$default <- default
                          },
-                         ui = function(id = self$id, preview = TRUE) {
-                           stop("Cannot use R6Input `$ui`")
+                         ui = function(id = self$id) {
+                           eval(self$get_call(id))
                          },
                          edit = function(id = self$id) {
                            stop("Cannot use R6Input `$edit`")
@@ -30,7 +30,7 @@ R6Input <- R6::R6Class("R6Input",
                          edit_mod = function(input, output, session) {
                            stop("Cannot use R6Input `$edit_mod`")
                          },
-                         get_call = function() {
+                         get_call = function(id = self$id) {
                            stop("Cannot use R6Input `$get_call`")
                          },
                          preview = function(){
@@ -121,12 +121,6 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                   super$initialize(id)
                                   self$label <- label
                                   self$default <- default
-                                },
-                                ui = function(id = self$id){
-                                  ns <- NS(id)
-                                  tagList(
-                                    textInput(ns("user_input"), label = self$label, value = self$default)
-                                  )
                                 },
                                 get_call = function() {
                                   ns <- NS(self$id)

@@ -11,21 +11,29 @@ ShinyForm <- R6::R6Class(
   },
   ui = function(id = self$id) {
     ns <- NS(id)
+    .call <- call2("div", id = glue("{ns(id)}-ShinyForm-Container"),
+                   class = "ShinyForm-Container",
+                   !!!map(self$layout[grepl("-Container$", parent),]$dom, generate_call,
+                          layout = self$layout, ns = ns))
+    eval(.call)
   }
 )
 
 
-generate_call <- function(target, layout) {
+generate_call <- function(target, layout, ns = NULL) {
+  ns <- ns %||% function(x) x
   row_i <- layout$dom==target
   if (layout$type[row_i]!="column") {
-    return(layout$obj[[which(row_i)]]$get_call())
+    .obj <- layout[row_i, obj, drop = TRUE][[1L]]
+    return(.obj$get_call(ns(.obj$id)))
   }
   
-  target_call <- layout$obj[[which(row_i)]]$get_call()
+  .obj <- layout$obj[[which(row_i)]]
+  target_call <- .obj$get_call(ns(.obj))
   prnts <- layout$parent == target
   
   if (any(prnts)) {
-    call_modify(target_call, !!!map(layout$dom[prnts], generate_call, layout = layout))
+    call_modify(target_call, !!!map(layout$dom[prnts], generate_call, layout = layout, ns = ns))
   } else {
     target_call
   }
