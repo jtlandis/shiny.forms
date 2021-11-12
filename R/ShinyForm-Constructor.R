@@ -1,4 +1,5 @@
 
+#' @include ShinyModule-Inputs.R
 
 SFConstructor <- R6::R6Class("ShinyFromConstructor",
                            inherit = ShinyModule,
@@ -30,7 +31,7 @@ SFConstructor <- R6::R6Class("ShinyFromConstructor",
                              },
                              server = function(input, output, session){
                                ns <- session$ns
-                               
+
                                val <- reactive({
                                  input$insert
                                  private$increment()

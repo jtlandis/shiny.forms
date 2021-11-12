@@ -4,8 +4,11 @@
 #                  "A","B","C","D","E","F"), 6, replace = T), collapse = "")
 # }
 
+#' The NSE table
+#'
 #' @name tidy_table
-#' @description An additional class to extend `tibble()` to allow
+#'
+#' @description An additional class to extend `data.frame` to allow
 #' for NSE filtering on `i`, and tidyselect functionality on `j`.
 #' This will help condense some code statements.
 #' @export
@@ -80,13 +83,23 @@ as_tidy_table <- function(x) {
     j <- tidyselect::eval_select(i_quo, x)
     return(as_tidy_table(x[j]))
   }
-  if (!missing(j)) {
-    j <- eval_select(j_quo, x)
-    x <- x[j]
-  }
 
   if (!missing(i)){
     i <- eval_tidy(i_quo, x)
+  } else {
+    i <- NULL
+  }
+
+  if (!missing(j)) {
+    j <- eval_select(j_quo, x)
+  } else {
+    j <- NULL
+  }
+
+  if(!is.null(j)) {
+    x <- x[j]
+  }
+  if(!is.null(i)) {
     x <- lapply(x, `[`, i)
   }
 
@@ -120,16 +133,21 @@ as_tidy_table <- function(x) {
     j <- eval_select(j_quo, x)
   }
 
+  if (missing(i)) {
+    i <- eval_tidy(i_quo, x)
+  } else {
+    i <- NULL
+  }
+
   if (!(length(value)==j || length(value)==1L)) abort("replacement must be an atomic vector, data.frame with 1 column or equal columns to j selection")
 
 
-  if (missing(i)) {
+  if (is.null(i)) {
     n <- length(x[[1L]])
     for (jj in seq_along(j)) {
       x[[j[jj]]] <- rep_len1(value[[jj]], n)
     }
   } else {
-    i <- eval_tidy(i_quo, x)
     n <- i_len(i)
     for (jj in seq_along(j)) {
       x[[j[jj]]][i] <- rep_len1(value[[jj]], n)
@@ -257,6 +275,8 @@ class_abbrv <- function(x, ...) {
   UseMethod("class_abbrv")
 }
 
+#'@export
+class_abbrv.ShinyModule <- function(x, width = 12L) paste0("<",abbreviate(class(x)[1L], minlength = width-2L),">")
 #' @export
 class_abbrv.default <- function(x, width = 6L) paste0("<",abbreviate(class(x)[1L], minlength = width-2L),">")
 #' @export

@@ -2,8 +2,10 @@
 
 #' @import shiny
 #' @import R6
-#' @import sortable sortable_js
-#' @import rlang `%||%` `!!!` abort warn as_function eval_tidy enquo
-#' @import tidyselect eval_select
-#' @import shinyjs useShinyjs show hide
-#' @import glue glue glue_collapse
+#' @importFrom sortable sortable_js
+#' @importFrom rlang `%||%` `!!!` abort warn as_function eval_tidy enquo
+#' @importFrom tidyselect eval_select
+#' @importFrom shinyjs useShinyjs show hide disable enable addClass
+#' @importFrom glue glue glue_collapse
+#' @importFrom stringr str_remove str_detect
+NULL

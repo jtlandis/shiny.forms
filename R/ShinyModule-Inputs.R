@@ -101,7 +101,7 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                      remove_shiny_inputs(ns('width'), input)
                                    }
                                  },
-                                 get_call = function() {
+                                 get_call = function(id = self$id) {
                                    ns <- NS(self$id)
                                    call("column", width = self$width, id = ns(self$inner_id))
                                  }
@@ -115,8 +115,8 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                   self$label <- label
                                   self$default <- default
                                 },
-                                get_call = function() {
-                                  ns <- NS(self$id)
+                                get_call = function(id = self$id) {
+                                  ns <- NS(id)
                                   call("textInput",inputId = ns("user_input"), label = self$label, value = self$default)
                                 },
                                 edit = function(id = self$id){

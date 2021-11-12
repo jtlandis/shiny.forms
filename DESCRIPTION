@@ -24,4 +24,16 @@ Imports:
     tidyselect,
     rlang,
     here,
-    glue
+    glue,
+    stringr
+Collate: 
+    'tidy-table.R'
+    'ShinyForm-.R'
+    'ShinyForm-Builder.R'
+    'ShinyModule-Inputs.R'
+    'ShinyForm-Constructor.R'
+    'ShinyForm-script-js.R'
+    'ShinyModule-.R'
+    'compact-purrr.R'
+    'imports.R'
+    'utilities.R'

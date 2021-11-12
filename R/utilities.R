@@ -49,8 +49,9 @@ empty2null <- function(x){
 #'  but other packages equivalents that are written in
 #'  C are 2-4 times faster than this version.
 #' @export
-rbind2 <- function(lst, check = TRUE) {
+row_bind <- function(..., check = TRUE) {
   #browser()
+  lst <- list(...)
   .names <- unique(unlist(lapply(lst, names)))
   lst <- lapply(lst, as.list)
   if (check) {
@@ -77,7 +78,7 @@ rbind2 <- function(lst, check = TRUE) {
   n <- length(out[[1]])
   #m <- length(out)
   attr(out, "row.names") <- .set_row_names(n)
-  class(out) <- "data.frame"
+  class(out) <- c("tidy_table" ,"data.frame")
   return(out)
 
 

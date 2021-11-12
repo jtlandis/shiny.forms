@@ -1,4 +1,5 @@
 
+#' @include tidy-table.R
 
 ShinyLayout <- R6::R6Class("ShinyLayout",
                            public = list(
@@ -6,7 +7,7 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                              initialize = function(id = NULL){
                                self$id <- as.character(id)
                              },
-                             objects = tidy_tibble(
+                             objects = tidy_table(
                                obj = list(),
                                parent = character(),
                                dom = character(),
@@ -14,8 +15,8 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                              ),
                              add_object = function(obj, parent, dom, type){
                                self$objects <-
-                                 bind_rows(self$objects,
-                                           tidy_tibble(obj = list(obj),
+                                 row_bind(self$objects,
+                                           tidy_table(obj = list(obj),
                                                        parent = parent,
                                                        dom = dom,
                                                        type = type))
@@ -27,19 +28,26 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
 ShinyForm <- R6::R6Class(
   "ShinyForm",
   inherit = ShinyModule,
-  initialize = function(id, layout, file) {
-    super$initialize(id)
-    self$layout <- layout
-    private$.file <- file
-  },
-  ui = function(id = self$id) {
-    ns <- NS(id)
-    .call <- call2("div", id = glue("{ns(id)}-ShinyForm-Container"),
-                   class = "ShinyForm-Container",
-                   !!!map(self$layout[grepl("-Container$", parent),]$dom, generate_call,
-                          layout = self$layout, ns = ns))
-    eval(.call)
-  }
+  public = list(
+    initialize = function(id, layout, file) {
+      super$initialize(id)
+      self$layout <- layout
+      private$.file <- file
+    },
+    layout = NULL,
+    ui = function(id = self$id) {
+      ns <- NS(id)
+      .call <- call2("div", id = glue("{ns(id)}-ShinyForm-Container"),
+                     class = "ShinyForm-Container",
+                     !!!map(self$layout[grepl("-Container$", parent),]$dom, generate_call,
+                            layout = self$layout, ns = ns))
+      eval(.call)
+    }
+  ),
+  private = list(
+    .file = NULL
+  )
+
 )
 
 
@@ -62,7 +70,7 @@ generate_call <- function(target, layout, ns = NULL) {
   }
 }
 
-tbl <- readRDS( here::here("example_tidy_table.rds"))
-saveRDS(tbl, file = here::here("example_tidy_table.rds"))
-call2("tagList", !!!map(tbl[str_detect(parent, "-Container$"),]$dom, generate_call, tbl))
-generate_call("1-ShinyForm-Column", tbl)
+# tbl <- readRDS( here::here("example_tidy_table.rds"))
+# saveRDS(tbl, file = here::here("example_tidy_table.rds"))
+# call2("tagList", !!!map(tbl[str_detect(parent, "-Container$"),]$dom, generate_call, tbl))
+# generate_call("1-ShinyForm-Column", tbl)

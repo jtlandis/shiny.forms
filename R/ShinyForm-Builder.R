@@ -28,6 +28,8 @@ weave_ui <- function(.l, ui){
   l[odd_index] <- ui
   return(l)
 }
+
+#' @export
 ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 inherit = ShinyModule,
                                 public = list(
@@ -305,7 +307,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       .tbl$parent <- str_remove(.tbl$parent, ns(""))
                                       .tbl$dom <- str_remove(.tbl$dom, ns(""))
                                       saveRDS(.tbl, private$.tmp)
-                                      cat(glue("updating: {private$.tmp}"))
+                                      cat(glue("updating: {private$.tmp}\n"))
                                     }, priority = 2L)
 
 
