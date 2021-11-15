@@ -35,9 +35,11 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 public = list(
                                   layout = NULL,
                                   modules = NULL,
-                                  initialize = function(id){
+                                  initialize = function(id, cache = NULL){
                                     super$initialize(id)
-                                    private$.tmp <- tempfile("ShinyForm", fileext = ".rds")
+                                    private$cache <- cache %||% tempdir()
+                                    cat(glue("caching in {private$cache}\n"))
+                                    private$.tmp <- tempfile(".ShinyForm", tmpdir = private$cache, fileext = ".rds")
                                     self$layout <- ShinyLayout$new(id = id)
                                     self$modules <- list(
                                       column = SFC_Column$new('column'),
@@ -46,14 +48,9 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   },
                                   ui = function(id = self$id) {
                                     ns <- NS(id)
-                                    # mods <- lapply(self$modules, function(x){x$ui(ns(x$id))})
-                                    # mods <- weave_ui(mods, tagList(div()))
-                                    # addmenu <- quo(dropdownButton(inputId = ns('AddElement'),
-                                    #                    icon = icon('plus'),
-                                    #                    status = "primary",
-                                    #                    circle = F, inline = T,
-                                    #                    !!!mods))
+
                                     tagList(
+                                      useShinyForms(),
                                       useShinyjs(),
                                       fluidRow(class = "ShinyForm-Container",
                                         column(width = 8,
@@ -64,6 +61,12 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                                class = "ShinyForm-Menu-Container",
                                                wellPanel(
                                                  tabsetPanel(type = 'pills',
+                                                   tabPanel("Form",
+                                                            br(),
+                                                            selectInput(ns('form_select'), "Select A Form",
+                                                                        choices = str_remove(list.files(private$cache, "rds$"), "\\.rds$")),
+                                                            actionButton(ns("load_form"), "Load"),
+                                                            actionButton(ns("new_form"), "New Form")),
                                                    tabPanel("Create",
                                                             br(),
                                                             selectInput(ns('element-options'),
@@ -98,6 +101,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                   selected_col = NULL
                                 ),
                                 private = list(
+                                  cache = NULL,
                                   .static_mods = NULL,
                                   .tmp = NULL,
                                   server = function(input, output, session){
