@@ -13,6 +13,6 @@ str_replace <- function(string, pattern, replacement, ...) {
   gsub(pattern, replacement, string, ...)
 }
 
-str_remove <- function(sting, pattern, ...) {
+str_remove <- function(string, pattern, ...) {
   str_replace(string, pattern, replacement = "", ...)
 }
