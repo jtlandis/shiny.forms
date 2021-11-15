@@ -29,31 +29,49 @@ ShinyForm <- R6::R6Class(
   "ShinyForm",
   inherit = ShinyModule,
   public = list(
-    initialize = function(id, layout, file) {
+    initialize = function(id, layout, name = NULL) {
       super$initialize(id)
       self$layout <- layout
-      private$.file <- file
+      private$.file <- name
     },
     layout = NULL,
     ui = function(id = self$id) {
       ns <- NS(id)
-      .call <- call2("div", id = glue("{ns(id)}-ShinyForm-Container"),
+      .call <- call2("column", width = 12L,
+                     useShinyFormsLite(),
+                     id = ns('ShinyForm-Container'),
                      class = "ShinyForm-Container",
                      !!!map(self$layout[grepl("-Container$", parent),]$dom, generate_call,
                             layout = self$layout, ns = ns))
       eval(.call)
+    },
+    load_preview = function(id = self$id){
+      ns <- NS(id)
+      for (i in seq_len(nrow(self$layout))) {
+        p <- self$layout[["parent"]][i]
+        o <- self$layout[["obj"]][[i]]
+        insertUI(selector = glue("#{ns(p)}"),
+                 where = "beforeEnd",
+                 ui = o$ui(ns(o$id)),
+                 immediate = T)
+        moduleServer(o$id, o$edit_mod)
+      }
     }
   ),
   private = list(
     .file = NULL,
     server = function(input, output, session) {
 
-      input_objs <- layout[type!="column", obj, drop = TRUE]
+      input_objs <- self$layout[type!="column", obj, drop = TRUE]
       mods <- map(input_objs, ~.x$call())
-      val_names <- map_chr(input_objs, ~.x$name)
+      val_names <- map_chr(input_objs, ~.x$name %||% "")
 
       value <- reactive({
-        df <- map(input_objs, ~.x$value())
+        validate(
+          need(all(nchar(val_names)>0), "Some outputs are not named."),
+          need(length(val_names)==length(unique(val_names)), "All output names must be unique.")
+        )
+        df <- map(mods, ~.x$value() %||% NA)
         names(df) <- val_names
         as_tidy_table(df)
 
