@@ -81,11 +81,13 @@ SFC_TextInput <- R6::R6Class("SFC_TextInput",
                             ui = function(id = self$id){
                               ns <- NS(id)
                               tagList(
+                                textInput(ns('name'), label = 'Output Name:', value = self$name),
                                 textInput(ns('label'), label = 'Field Label:', value = self$label),
                                 textInput(ns('default'), label = 'Default Value:', value = self$default),
                                 actionButton(ns("insert"), "OK", class = "btn-primary")
                               )
                             },
+                            name = NULL,
                             label = NULL,
                             default = NULL
                           ),
@@ -94,6 +96,7 @@ SFC_TextInput <- R6::R6Class("SFC_TextInput",
                             update = function(){
                               eval.parent(
                                 quote({
+                                  self$name <- empty2null(input$name)
                                   self$label <- empty2null(input$label)
                                   self$default <- empty2null(input$default)
                                 })
@@ -103,6 +106,7 @@ SFC_TextInput <- R6::R6Class("SFC_TextInput",
                               eval.parent(
                                 quote(
                                   private$R6$new(glue("{self$id}-{private$counter}"),
+                                                 name = self$name,
                                                  label = self$label,
                                                  default = self$default)
                                   )
