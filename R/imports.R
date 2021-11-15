@@ -7,5 +7,4 @@
 #' @importFrom tidyselect eval_select
 #' @importFrom shinyjs useShinyjs show hide disable enable addClass
 #' @importFrom glue glue glue_collapse
-#' @importFrom stringr str_remove str_detect
 NULL

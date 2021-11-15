@@ -24,8 +24,7 @@ Imports:
     tidyselect,
     rlang,
     here,
-    glue,
-    stringr
+    glue
 Collate: 
     'tidy-table.R'
     'ShinyForm-.R'
