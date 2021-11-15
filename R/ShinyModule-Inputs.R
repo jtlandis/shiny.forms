@@ -2,6 +2,7 @@
 R6Input <- R6::R6Class("R6Input",
                        inherit = ShinyModule,
                        public = list(
+                         name = "",
                          selector = function(ns = NULL){
                            ns <- ns %||% getDefaultReactiveDomain()
                            glue(".shiny-input-container:has(#{ns('user_input')})")
@@ -122,6 +123,7 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                 edit = function(id = self$id){
                                   ns <- NS(id)
                                   tagList(
+                                    textInput(ns('name'), label = "Output Name", value = self$name),
                                     textInput(ns('label'), label = "Set Label", value = self$label),
                                     textInput(ns('default'), label = "Set Default", value = self$default)
                                   )
@@ -130,9 +132,10 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                   ns <- session$ns
                                   observe({
                                     validate(
-                                      need(!is.null(input$label)|!is.null(input$default),
+                                      need(!is.null(input$label)|!is.null(input$default)|!is.null(input$name),
                                            "Nothing has been Edited")
                                       )
+                                    self$name <- empty2null(input$name)
                                     self$label <- empty2null(input$label)
                                     self$default <- empty_on_0str(input$default)
                                     updateTextInput(session = session,
@@ -150,7 +153,7 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                   removeUI(glue(".shiny-input-container:has(#{ns('default')})"))
                                   removeUI(self$selector(ns))
                                   if(!is.null(input)){
-                                    remove_shiny_inputs(c(ns('label'),ns('default'), ns('user_input')), input)
+                                    remove_shiny_inputs(c(ns('label'), ns('default'), ns('name'), ns('user_input')), input)
                                   }
                                 }
                               ))

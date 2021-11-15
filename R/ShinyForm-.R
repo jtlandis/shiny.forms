@@ -45,7 +45,22 @@ ShinyForm <- R6::R6Class(
     }
   ),
   private = list(
-    .file = NULL
+    .file = NULL,
+    server = function(input, output, session) {
+
+      input_objs <- layout[type!="column", obj, drop = TRUE]
+      mods <- map(input_objs, ~.x$call())
+      val_names <- map_chr(input_objs, ~.x$name)
+
+      value <- reactive({
+        df <- map(input_objs, ~.x$value())
+        names(df) <- val_names
+        as_tidy_table(df)
+
+      })
+
+      return(list(value = value))
+    }
   )
 
 )
