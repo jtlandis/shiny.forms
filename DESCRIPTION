@@ -34,5 +34,6 @@ Collate:
     'ShinyForm-script-js.R'
     'ShinyModule-.R'
     'compact-purrr.R'
+    'compact-stringr.R'
     'imports.R'
     'utilities.R'
