@@ -10,8 +10,9 @@ R6Input <- R6::R6Class("R6Input",
                          inner_id = 'user_input',
                          label = NULL,
                          default = NULL,
-                         initialize = function(id, label = NULL, default = NULL){
+                         initialize = function(id, name = "", label = NULL, default = NULL){
                            super$initialize(id)
+                           self$name <- name
                            self$label <- label
                            self$default <- default
                          },
@@ -61,8 +62,8 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                    glue("#{ns(paste0(id,'-Container'))}:has(#{ns(id)})")
                                  },
                                  inner_id = "ShinyForm-Column",
-                                 initialize = function(id, width){
-                                   super$initialize(id)
+                                 initialize = function(id,  width){
+                                   super$initialize(id = id)
                                    self$width <- width
                                  },
                                  width = NULL,
@@ -111,10 +112,8 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
 R6TextInput <- R6::R6Class("R6TextInput",
                               inherit = R6Input,
                               public = list(
-                                initialize = function(id, label = NULL, default = NULL){
-                                  super$initialize(id)
-                                  self$label <- label
-                                  self$default <- default
+                                initialize = function(id, name = NULL, label = NULL, default = NULL){
+                                  super$initialize(id, name = name, label = label, default = default)
                                 },
                                 get_call = function(id = self$id) {
                                   ns <- NS(id)
@@ -132,10 +131,10 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                   ns <- session$ns
                                   observe({
                                     validate(
-                                      need(!is.null(input$label)|!is.null(input$default)|!is.null(input$name),
+                                      need(!is.null(input$label)|!is.null(input$default),
                                            "Nothing has been Edited")
                                       )
-                                    self$name <- empty2null(input$name)
+
                                     self$label <- empty2null(input$label)
                                     self$default <- empty_on_0str(input$default)
                                     updateTextInput(session = session,
@@ -145,6 +144,13 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                     if(is.null(self$label)){
                                       addClass(id = 'user_input-label', 'shiny-label-null')
                                     }
+                                  })
+
+                                  observe({
+                                    validate(
+                                      need(!is.null(input$name), "Nothing has been Edited")
+                                    )
+                                    self$name <- input$name
                                   })
                                 },
                                 remove = function(input, ns = NULL){
