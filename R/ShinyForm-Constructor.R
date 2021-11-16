@@ -20,10 +20,25 @@ SFConstructor <- R6::R6Class("ShinyFromConstructor",
                                #       function(x, y, fun){ assign(y, x, envir = environment(fun))}, fun = private$server)
                                moduleServer(self$id,
                                             private$server)
-                             }
+                             },
+                             layout = NULL
                            ),
                            private = list(
                              R6 = NULL,
+                             index = function() {
+                               objs <- self$layout$objects[type==self$id,][["obj"]]
+                               if (length(objs)==0L) return(1L)
+                               indices <- as.integer(str_extract(map_chr(objs, ~.x$id), "[0-9]+$"))
+                               i_min <- min(indices)
+                               if (i_min!=1L) return(1L)
+                               indices <- indices[order(indices)]
+                               .diff <- diff(indices)
+                               if (any(.diff>1L))
+                                 return(which(.diff>1L)[1L] + 1L)
+                               else
+                                 return(max(indices) + 1L)
+
+                             },
                              counter = 0L,
                              increment = function(){
                                private$counter <- private$counter + 1L
@@ -42,7 +57,7 @@ SFConstructor <- R6::R6Class("ShinyFromConstructor",
                              },
                              update = function(){},
                              make = function(){
-                               eval.parent(quote(private$R6$new(glue("{private$counter}"))))
+                               eval.parent(quote(private$R6$new(glue("{private$index()}"))))
                              }
                            ))
 
@@ -68,7 +83,7 @@ SFC_Column <- R6::R6Class("SFC_Column",
                             },
                             make = function(){
                               eval.parent(
-                                quote(private$R6$new(glue("{private$counter}"), width = self$width))
+                                quote(private$R6$new(glue("{private$index()}"), width = self$width))
                               )
                             }
                           ))
@@ -105,7 +120,7 @@ SFC_TextInput <- R6::R6Class("SFC_TextInput",
                             make = function(){
                               eval.parent(
                                 quote(
-                                  private$R6$new(glue("{self$id}-{private$counter}"),
+                                  private$R6$new(glue("{self$id}-{private$index()}"),
                                                  name = self$name,
                                                  label = self$label,
                                                  default = self$default)

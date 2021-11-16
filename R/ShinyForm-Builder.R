@@ -136,6 +136,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                         enable('mv')
                                       }
                                     })
+                                    self$modules <- map(self$modules, function(x, l){x$layout <- l; x}, l = self$layout)
                                     #call each constructor object's module
                                     built_obj <- lapply(self$modules,function(x){x$call()})
                                     #If a constructor's init is clicked - close menu
@@ -150,7 +151,7 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     #          })
                                     #        })
                                     #Add element to page if `insert` is active
-                                    lapply(names(built_obj),
+                                    map(map_chr(self$modules, ~.x$id),
                                            function(mod){
                                              observeEvent(built_obj[[mod]]$insert(), {
                                                obj <- built_obj[[mod]]$value()
