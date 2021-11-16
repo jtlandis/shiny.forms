@@ -97,8 +97,8 @@ ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
                                  },
                                  remove = function(input, ns = NULL){
                                    ns <- ns %||% getDefaultReactiveDomain()$ns
-                                   removeUI(glue(".shiny-input-container:has(#{ns('width')})"))
-                                   removeUI(self$selector(ns))
+                                   removeUI(glue(".shiny-input-container:has(#{ns('width')})"), immediate = T)
+                                   removeUI(self$selector(ns), immediate = T)
                                    if(!is.null(input)){
                                      remove_shiny_inputs(ns('width'), input)
                                    }
@@ -155,9 +155,9 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                 },
                                 remove = function(input, ns = NULL){
                                   ns <- ns %||% getDefaultReactiveDomain()$ns
-                                  removeUI(glue(".shiny-input-container:has(#{ns('label')})"))
-                                  removeUI(glue(".shiny-input-container:has(#{ns('default')})"))
-                                  removeUI(self$selector(ns))
+                                  removeUI(glue(".shiny-input-container:has(#{ns('label')})"), immediate = T)
+                                  removeUI(glue(".shiny-input-container:has(#{ns('default')})"), immediate = T)
+                                  removeUI(self$selector(ns), immediate = T)
                                   if(!is.null(input)){
                                     remove_shiny_inputs(c(ns('label'), ns('default'), ns('name'), ns('user_input')), input)
                                   }

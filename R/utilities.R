@@ -16,7 +16,7 @@ remove_shiny_inputs <- function(id, .input) {
   impl <- .subset2(.input, "impl")
   lgl <- id %in% impl$.values$keys()
   if(any(!lgl)) warn(glue("The following `id`s were not found in shiny server input and cannot be removed : ",
-                          glue_collapse(id[!lgl]), sep = ", ", last = ", and "))
+                          glue_collapse(id[!lgl], sep = ", ", last = ", and ")))
   to_rm <- id[lgl]
   invisible(
     map(to_rm, function(i) {

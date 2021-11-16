@@ -53,7 +53,7 @@ SFConstructor <- R6::R6Class("ShinyFromConstructor",
                                  private$update()
                                  private$make()
                                })
-                               return(list(value = val, insert = reactive({input$insert})))
+                               return(list(value = val, insert = reactive({input$insert}), id = self$id))
                              },
                              update = function(){},
                              make = function(){

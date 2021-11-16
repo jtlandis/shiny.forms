@@ -29,10 +29,15 @@ ShinyForm <- R6::R6Class(
   "ShinyForm",
   inherit = ShinyModule,
   public = list(
-    initialize = function(id, layout, name = NULL) {
+    initialize = function(id, layout, dir) {
       super$initialize(id)
       self$layout <- layout
-      private$.file <- name
+      private$.dir <- dir
+    },
+    save = function() {
+      loc <- if(length(self$id)==0) tempfile(".ShinyForm", private$.dir, ".rds") else glue("{private$.dir}/{self$id}.rds")
+      saveRDS(object = self, file = loc)
+      cat(glue("caching: {loc}\n"))
     },
     layout = NULL,
     ui = function(id = self$id) {
@@ -50,7 +55,7 @@ ShinyForm <- R6::R6Class(
       for (i in seq_len(nrow(self$layout))) {
         p <- self$layout[["parent"]][i]
         o <- self$layout[["obj"]][[i]]
-        insertUI(selector = glue("#{ns(p)}"),
+        insertUI(selector = glue("#{p}"),
                  where = "beforeEnd",
                  ui = o$ui(ns(o$id)),
                  immediate = T)
@@ -59,7 +64,7 @@ ShinyForm <- R6::R6Class(
     }
   ),
   private = list(
-    .file = NULL,
+    .dir = NULL,
     server = function(input, output, session) {
 
       input_objs <- self$layout[type!="column", obj, drop = TRUE]

@@ -35,16 +35,17 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 public = list(
                                   layout = NULL,
                                   modules = NULL,
+                                  Form = NULL,
                                   initialize = function(id, cache = NULL){
                                     super$initialize(id)
                                     private$cache <- cache %||% tempdir()
                                     cat(glue("caching in {private$cache}\n"))
-                                    private$.tmp <- tempfile(".ShinyForm", tmpdir = private$cache, fileext = ".rds")
                                     self$layout <- ShinyLayout$new(id = id)
                                     self$modules <- list(
                                       column = SFC_Column$new('column'),
                                       textInput = SFC_TextInput$new('textInput')
                                     )
+                                    self$Form <- ShinyForm$new(character(), NULL, private$cache)
                                   },
                                   ui = function(id = self$id) {
                                     ns <- NS(id)
@@ -102,8 +103,6 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                 ),
                                 private = list(
                                   cache = NULL,
-                                  .static_mods = NULL,
-                                  .tmp = NULL,
                                   server = function(input, output, session){
                                     ns <- session$ns
                                     s <- self$reactive()
@@ -151,24 +150,24 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                     #          })
                                     #        })
                                     #Add element to page if `insert` is active
-                                    map(map_chr(self$modules, ~.x$id),
-                                           function(mod){
-                                             observeEvent(built_obj[[mod]]$insert(), {
-                                               obj <- built_obj[[mod]]$value()
-                                               parent <- parent_id()
-                                               self$layout$add_object(obj = obj,
-                                                                      parent = parent,
-                                                                      dom = ns(glue("{obj$id}-{obj$inner_id}")),
-                                                                      type = mod)
-                                               insertUI(glue("#{parent}"),
-                                                        where = "beforeEnd",
-                                                        ui = obj$ui(ns(obj$id)),
-                                                        immediate = T)
-                                               moduleServer(obj$id, obj$edit_mod) #insure things that need to be reactive are active
-                                               print(self$layout$objects)
-                                               s()$invalidate()
-                                             })
-                                           })
+                                    map(built_obj,
+                                        function(mod){
+                                          observeEvent(mod$insert(), {
+                                            obj <- mod$value()
+                                            parent <- parent_id()
+                                            self$layout$add_object(obj = obj,
+                                                                   parent = parent,
+                                                                   dom = ns(glue("{obj$id}-{obj$inner_id}")),
+                                                                   type = mod$id)
+                                            insertUI(glue("#{parent}"),
+                                                     where = "beforeEnd",
+                                                     ui = obj$ui(ns(obj$id)),
+                                                     immediate = T)
+                                            moduleServer(obj$id, obj$edit_mod) #insure things that need to be reactive are active
+                                            print(self$layout$objects)
+                                            s()$invalidate()
+                                          })
+                                        })
 
                                     observe({
                                       isolate({prev_selected <- input$parent_select})
@@ -220,8 +219,46 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
 
 
 
-                                    observeEvent(input$Layout, {
+                                    # load from disk
+                                    # remove all existing mods
+                                    observeEvent(input$load_form, {
+                                      session$sendCustomMessage("unselectShinyForm", list(id = input$ShinyForm_selected_id))
 
+                                      #remove all current objects
+                                      map(self$layout$objects$obj, ~.x$remove(input, NS(ns(.x$id))))
+
+                                      self$Form <- readRDS(paste0(private$cache,"/",input$form_select,".rds"))
+                                      self$Form$layout[,c(parent, dom)] <- map(self$Form$layout[,c(parent, dom)], ns)
+                                      self$layout$objects <- self$Form$layout
+                                      self$Form$load_preview(self$id)
+
+                                    })
+
+                                    # make a new form
+                                    observeEvent(input$new_form, {
+                                      session$sendCustomMessage("unselectShinyForm", list(id = input$ShinyForm_selected_id))
+
+                                      map(self$layout$objects$obj, ~.x$remove(input, NS(ns(.x$id))))
+                                      #reset layout
+                                      self$Form$layout <- self$layout$objects <-
+                                        tidy_table(
+                                          obj = list(),
+                                          parent = character(),
+                                          dom = character(),
+                                          type = character()
+                                        )
+                                      self$Form$id <- character()
+                                      #make modal for Form
+                                      showModal(
+                                        modalDialog(
+                                          p("Please give this Form a name."),
+                                          textInput(ns("new_form_id"), "Form Name:"),
+                                          footer = tagList(
+                                            modalButton("Cancel!"),
+                                            actionButton(ns("save_form"), label = "Save!")
+                                          )
+                                        )
+                                      )
                                     })
 
 
@@ -291,16 +328,41 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       input$Preview_Sortable_Order
                                     })
 
-                                    init_query <- function() {
+                                    init_query <- function(save = FALSE) {
                                       # browser()
                                       session$sendCustomMessage(
                                         "orderElementIDs",
-                                        list(query = glue_collapse(glue("#{self$layout$objects$dom}"),sep = ","))
+                                        list(query = glue_collapse(glue("#{self$layout$objects$dom}"),sep = ","),
+                                             save = save)
                                       )
                                     }
 
-                                    observeEvent(input$Save, init_query(), priority = 2L)
-                                    observeEvent(input$rm, init_query(), priority = 2L)
+                                    observeEvent(input$Save, {
+                                      if (length(self$Form$id)==0||nchar(self$Form$id)==0) {
+                                        showModal(
+                                          modalDialog(
+                                            p("Please give this Form a name."),
+                                            textInput(ns("new_form_id"), "Form Name:"),
+                                            footer = tagList(
+                                              modalButton("Cancel!"),
+                                              actionButton(ns("save_form"), label = "Save!")
+                                            )
+                                          )
+                                        )
+                                      } else {
+                                        init_query(TRUE)
+                                      }
+                                      }, priority = 2L)
+
+                                    observeEvent(input$save_form, {
+                                      validate(
+                                        need(length(input$new_form_id)>0, "Name cannot be NULL"),
+                                        need(nchar(input$new_form_id)>0, "Name cannot be zero length"))
+                                      removeModal()
+                                      self$Form$id <- input$new_form_id
+                                      init_query(TRUE)
+                                    })
+                                    observeEvent(input$rm, init_query(FALSE), priority = 2L)
 
 
                                     observe({
@@ -308,12 +370,22 @@ ShinyFormBuilder <- R6::R6Class("ShinyFormBuilder",
                                       ids_ord <- input$ShinyForm_ele_ordered
                                       self$layout$objects <- self$layout$objects[sort_by(dom, .env$ids_ord),]
                                       print(self$layout$objects)
+                                    }, priority = 2L)
+
+                                    cache_table <- function() {
                                       .tbl <- self$layout$objects
                                       .tbl$parent <- str_remove(.tbl$parent, ns(""))
                                       .tbl$dom <- str_remove(.tbl$dom, ns(""))
-                                      saveRDS(.tbl, private$.tmp)
-                                      cat(glue("updating: {private$.tmp}\n"))
-                                    }, priority = 2L)
+                                      self$Form$layout <- .tbl
+                                      self$Form$save()
+                                    }
+
+                                    observe({
+                                      req(input$ShinyForm_save)
+                                      cache_table()
+                                      updateSelectInput(inputId = 'form_select',
+                                                        choices = str_remove(list.files(private$cache, "rds$"), "\\.rds$"))
+                                    }, priority = -5L)
 
 
                                   }

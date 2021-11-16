@@ -123,10 +123,6 @@ as_tidy_table <- function(x) {
     abort("when assigning to a tidy_table, all i, j, and value must be in call signature")
   }
 
-  if (length(dim(value)) == 0) {
-    value <- list(value)
-  }
-
   if (missing(j)) {
     j <- setNames(seq_along(x), names(x))
   } else {
@@ -134,12 +130,18 @@ as_tidy_table <- function(x) {
   }
 
   if (missing(i)) {
-    i <- eval_tidy(i_quo, x)
-  } else {
     i <- NULL
+  } else {
+    i <- eval_tidy(i_quo, x)
   }
 
-  if (!(length(value)==j || length(value)==1L)) abort("replacement must be an atomic vector, data.frame with 1 column or equal columns to j selection")
+  if (length(dim(value)) == 0) {
+    if (length(value)!=length(j)) {
+      value <- list(value)
+    }
+  }
+
+  if (!(length(value)==length(j) || length(value)==1L)) abort("replacement must be an atomic vector, data.frame with 1 column or equal columns to j selection")
 
 
   if (is.null(i)) {

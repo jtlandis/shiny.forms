@@ -17,22 +17,29 @@ get_ShinyForm_Element <- function(id, ns = NULL){
   selected <- "ShinyForm_selected_id"
   dom <- "ShinyForm_ele_ordered"
   children <- "ShinyForm_children"
+  save <- "ShinyForm_save"
   if(!is.null(ns)){
     id <- ns(id)
     selected <- ns(selected)
     dom <- ns(dom)
     children <- ns(children)
+    save <- ns(save)
   }
   glue::glue(
     .open = "<", .close = ">", .sep = "\n",
     "
     Shiny.addCustomMessageHandler('orderElementIDs', orderElementIDs)
+    var ShinyForm_save_index = 0;
     function orderElementIDs(message) {
       let ids = [];
       $(message.query).map((index,ele) =>{
         ids.push(ele.id);
         });
       Shiny.setInputValue('<dom>', ids, {priority: 'event'});
+      if(message.save) {
+        ShinyForm_save_index = ShinyForm_save_index + 1;
+        Shiny.setInputValue('<save>', ShinyForm_save_index, {priority: 'event'});
+      }
     }
     Shiny.addCustomMessageHandler('updateShinyFormColumn', updateShinyFormColumn);
     function updateShinyFormColumn(message) {
