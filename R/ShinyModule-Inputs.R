@@ -41,7 +41,7 @@ R6Input <- R6::R6Class("R6Input",
                            cat("<", class(self)[1L], ">\n", sep = "")
                            names <- paste0(" * ", format(names(fields), justify = "right"), " : ")
                            values <- format(map_chr(fields, format), justify = "left")
-                           cat(paste(names, values, collapse = "\n"))
+                           cat(paste(names, values, collapse = "\n"), "\n", sep = "")
                            return(invisible(self))
                          }
                        ),
@@ -53,7 +53,7 @@ R6Input <- R6::R6Class("R6Input",
                          }
                        ))
 
-ShinyFormColumn <- R6::R6Class("ShinyFromColumn",
+ShinyFormColumn <- R6::R6Class("ShinyFormColumn",
                                inherit = R6Input,
                                public = list(
                                  selector = function(ns){

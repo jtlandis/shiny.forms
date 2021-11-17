@@ -25,6 +25,8 @@ ShinyLayout <- R6::R6Class("ShinyLayout",
                            ))
 
 #takes a layout and builds it
+
+#' @export
 ShinyForm <- R6::R6Class(
   "ShinyForm",
   inherit = ShinyModule,
@@ -34,10 +36,20 @@ ShinyForm <- R6::R6Class(
       self$layout <- layout
       private$.dir <- dir
     },
+    print = function() {
+      cat(glue("<{class(self)[1L]}> saved at {private$.loc()}
+               \t {nrow(self$layout)} elements stored:"),"\n")
+      for(o in self$layout$obj) {
+        print(o)
+        cat("\n")
+      }
+
+
+    },
     save = function() {
-      loc <- if(length(self$id)==0) tempfile(".ShinyForm", private$.dir, ".rds") else glue("{private$.dir}/{self$id}.rds")
+      loc <- private$.loc()
       saveRDS(object = self, file = loc)
-      cat(glue("caching: {loc}\n"))
+      cat("caching:", loc, "\n")
     },
     layout = NULL,
     ui = function(id = self$id) {
@@ -64,6 +76,7 @@ ShinyForm <- R6::R6Class(
     }
   ),
   private = list(
+    .loc = function() {if(length(self$id)==0) tempfile(".ShinyForm", private$.dir, ".rds") else glue("{private$.dir}/{self$id}.rds")},
     .dir = NULL,
     server = function(input, output, session) {
 

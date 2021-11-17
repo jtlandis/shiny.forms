@@ -36,4 +36,5 @@ Collate:
     'compact-purrr.R'
     'compact-stringr.R'
     'imports.R'
+    'upgrade.R'
     'utilities.R'

@@ -69,6 +69,18 @@ ShinyModule <- R6::R6Class(
       cat("ReactiveDep:", private$count, "\n")
       private$reactiveDep(private$count)
       invisible()
+    },
+    #' @description
+    #' If an ShinyModule object is ever cached to disk,
+    #' and the corresponding package is updated with new
+    #' methods, this function is used to update that object
+    #' to a newer version if possible. This will call an
+    #' internal S3 function named upgrade
+    #' @param ... additional arguments to be passed to the
+    #' internal S3 upgrade method. This exists for future
+    #' extensibility. For example
+    upgrade = function(...){
+      upgrade(self, ...)
     }
   ),
   private = list(

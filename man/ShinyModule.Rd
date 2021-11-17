@@ -37,6 +37,7 @@ may be of some care for the user.}
 \item \href{#method-remove}{\code{ShinyModule$remove()}}
 \item \href{#method-reactive}{\code{ShinyModule$reactive()}}
 \item \href{#method-invalidate}{\code{ShinyModule$invalidate()}}
+\item \href{#method-upgrade}{\code{ShinyModule$upgrade()}}
 \item \href{#method-clone}{\code{ShinyModule$clone()}}
 }
 }
@@ -123,6 +124,29 @@ the top of the app.
 \if{html}{\out{<div class="r">}}\preformatted{ShinyModule$invalidate()}\if{html}{\out{</div>}}
 }
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-upgrade"></a>}}
+\if{latex}{\out{\hypertarget{method-upgrade}{}}}
+\subsection{Method \code{upgrade()}}{
+If an ShinyModule object is ever cached to disk,
+and the corresponding package is updated with new
+methods, this function is used to update that object
+to a newer version if possible. This will call an
+internal S3 function named upgrade
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{ShinyModule$upgrade(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{additional arguments to be passed to the
+internal S3 upgrade method. This exists for future
+extensibility. For example}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clone"></a>}}
