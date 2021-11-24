@@ -16,6 +16,9 @@ R6Input <- R6::R6Class("R6Input",
                            self$label <- label
                            self$default <- default
                          },
+                         finalize = function(){
+                           cat(glue("** Removing <{class(self)[1L]}> with id '{self$id}' from memory **"),"\n")
+                         },
                          ui = function(id = self$id) {
                            eval(self$get_call(id))
                          },
@@ -50,7 +53,8 @@ R6Input <- R6::R6Class("R6Input",
                            ns <- session$ns
                            value <- reactive(input$user_input)
                            return(list(value = value))
-                         }
+                         },
+                         .obs = list()
                        ))
 
 ShinyFormColumn <- R6::R6Class("ShinyFormColumn",
@@ -89,10 +93,11 @@ ShinyFormColumn <- R6::R6Class("ShinyFormColumn",
                                  },
                                  edit_mod = function(input, output, session){
                                    ns <- session$ns
-                                   observe({
+                                   private$.obs[[1L]] <- observe({
                                      req(input$width)
                                      self$width <- input$width
                                      updateShinyFormColumn(id = "ShinyForm-Column", width = input$width, session = session)
+                                     cat(glue("{self$id} has changed!"),"\n")
                                    })
                                  },
                                  remove = function(input, ns = NULL){
@@ -102,6 +107,7 @@ ShinyFormColumn <- R6::R6Class("ShinyFormColumn",
                                    if(!is.null(input)){
                                      remove_shiny_inputs(ns('width'), input)
                                    }
+                                   private$.obs[[1L]]$destroy()
                                  },
                                  get_call = function(id = self$id) {
                                    ns <- NS(self$id)
@@ -129,7 +135,7 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                 },
                                 edit_mod = function(input, output, session){
                                   ns <- session$ns
-                                  observe({
+                                  private$.obs[[1L]] <- observe({
                                     validate(
                                       need(!is.null(input$label)|!is.null(input$default),
                                            "Nothing has been Edited")
@@ -146,7 +152,7 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                     }
                                   })
 
-                                  observe({
+                                  private$.obs[[2L]] <- observe({
                                     validate(
                                       need(!is.null(input$name), "Nothing has been Edited")
                                     )
@@ -161,6 +167,7 @@ R6TextInput <- R6::R6Class("R6TextInput",
                                   if(!is.null(input)){
                                     remove_shiny_inputs(c(ns('label'), ns('default'), ns('name'), ns('user_input')), input)
                                   }
+                                  map(private$.obs, ~.x$destroy())
                                 }
                               ))
 
